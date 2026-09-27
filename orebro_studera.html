@@ -198,9 +198,22 @@
     }
     #sv-frame { flex: 1; border: none; width: 100%; display: block; }
 
+    /* ── Map bottom padding for navigation ── */
+    #study-map-wrap { padding-bottom: 56px; }
+    #study-map { bottom: 56px; }
+
+    /* ── Reset zoom button ── */
+    #map-reset-btn {
+      position: absolute; bottom: 64px; left: 12px; z-index: 500;
+      background: rgba(4,12,26,0.9); border: 1px solid rgba(255,167,0,.45);
+      color: #ffa700; border-radius: 6px; padding: 6px 12px; cursor: pointer;
+      font-size: 11px; font-weight: 700; font-family: 'Exo 2', sans-serif;
+      backdrop-filter: blur(4px);
+    }
+
     /* ── Stops list button ── */
     #stops-list-btn {
-      position: absolute; bottom: 16px; right: 16px; z-index: 500;
+      position: absolute; bottom: 64px; right: 12px; z-index: 500;
       background: rgba(4,12,26,0.9); border: 1px solid rgba(0,212,255,.35);
       color: var(--cyan); border-radius: 6px; padding: 7px 14px; cursor: pointer;
       font-size: 12px; font-weight: 700; font-family: 'Exo 2', sans-serif;
@@ -221,7 +234,8 @@
       #nav-bar { padding: 6px 10px; gap: 6px; }
       .nav-btn { padding: 6px 10px; font-size: 12px; }
       #nav-stop-num { min-width: 30px; font-size: 10px; }
-      #stops-list-btn { bottom: 12px; right: 10px; font-size: 11px; padding: 6px 10px; }
+      #stops-list-btn { bottom: 60px; right: 10px; font-size: 11px; padding: 6px 10px; }
+      #map-reset-btn  { bottom: 60px; left: 10px; font-size: 10px; padding: 5px 10px; }
     }
     @media(max-width:380px){
       .ls-btn { width: 24px; height: 24px; font-size: 10px; }
@@ -286,6 +300,7 @@
   <div id="study-map-wrap">
     <div id="study-map"></div>
     <div id="swipe-hint">← svep eller tryck på pilarna →</div>
+    <button id="map-reset-btn" onclick="resetMapZoom()" style="display:none">↺ Återställ vy</button>
     <button id="stops-list-btn" onclick="openStopList()">☰ Alla hållplatser</button>
   </div>
 </div>
@@ -375,7 +390,7 @@ var STOP_PEAKS = {
 };
 
 // ── State ──────────────────────────────────────────────────────────────────────
-var SS = { line:1, dir:'0', stops:[], idx:0, map:null, mapTile:null, curM:null, routeL:null, dotMs:[], svLat:null, svLng:null, svName:'' };
+var SS = { line:1, dir:'0', stops:[], idx:0, map:null, mapTile:null, curM:null, routeL:null, dotMs:[], svLat:null, svLng:null, svName:'', userZoom:null };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function haversineDist(a, b) {
@@ -434,10 +449,14 @@ function goTo(idx) {
   SS.idx=idx;
   var s=stops[idx], prev=stops[idx-1], next=stops[idx+1];
 
-  // Map
+  // Map — pan to stop, keep user zoom if set
   if(SS.curM) SS.map.removeLayer(SS.curM);
   SS.curM=L.circleMarker(s.c,{radius:12,fillColor:LINE_COLORS[SS.line],fillOpacity:1,color:'#fff',weight:3}).addTo(SS.map);
-  SS.map.setView(s.c,16,{animate:true,duration:.4});
+  if(SS.userZoom!==null){
+    SS.map.panTo(s.c,{animate:true,duration:.4});
+  } else {
+    SS.map.setView(s.c,16,{animate:true,duration:.4});
+  }
 
   // Progress + counter
   document.getElementById('nav-prev').disabled=idx===0;
@@ -546,6 +565,14 @@ function openLine(lineNum, dir, startIdx) {
     if(!SS.map){
       SS.map=L.map('study-map',{zoomControl:true}).setView(stops[0].c,15);
       SS.mapTile=L.tileLayer(getTileUrl(),{attribution:'© Mapbox',maxZoom:18,tileSize:512,zoomOffset:-1}).addTo(SS.map);
+
+      // Spara zoom när användaren zoomar manuellt
+      SS.map.on('zoomend',function(){
+        if(SS._zoomLock) return;
+        SS.userZoom=SS.map.getZoom();
+        document.getElementById('map-reset-btn').style.display='block';
+      });
+
       // Satellit-toggle-knapp
       var satCtrl=L.control({position:'topright'});
       satCtrl.onAdd=function(){
@@ -560,7 +587,13 @@ function openLine(lineNum, dir, startIdx) {
       satCtrl.addTo(SS.map);
     } else { SS.map.invalidateSize(); }
     setTimeout(function(){SS.map.invalidateSize();},50);
-    setTimeout(function(){SS.map.invalidateSize();SS.map.setView(SS.stops[0].c,15);},200);
+    setTimeout(function(){
+      SS.map.invalidateSize();
+      SS._zoomLock=true; SS.userZoom=null;
+      document.getElementById('map-reset-btn').style.display='none';
+      SS.map.setView(SS.stops[0].c,15);
+      setTimeout(function(){SS._zoomLock=false;},300);
+    },200);
 
     // Route shape
     if(SS.routeL) SS.map.removeLayer(SS.routeL);
@@ -608,6 +641,16 @@ function openStopList(){
 
 function closeStopList(){
   document.getElementById('stop-list-panel').classList.remove('open');
+}
+
+// ── Reset map zoom ────────────────────────────────────────────────────────────
+function resetMapZoom(){
+  if(!SS.map) return;
+  SS._zoomLock=true; SS.userZoom=null;
+  document.getElementById('map-reset-btn').style.display='none';
+  var s=SS.stops[SS.idx];
+  SS.map.setView(s.c,16,{animate:true,duration:.4});
+  setTimeout(function(){SS._zoomLock=false;},400);
 }
 
 // ── Street View panel ─────────────────────────────────────────────────────────

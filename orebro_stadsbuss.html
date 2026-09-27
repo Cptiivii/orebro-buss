@@ -1476,6 +1476,9 @@ var OSM_TILE = 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x
 var OSM_ATTR = '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 var DARK_TILE = 'https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}?access_token=' + MB_TOKEN;
 var DARK_ATTR = '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+var SAT_TILE  = 'https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token=' + MB_TOKEN;
+var _satMode  = false;
+var _mapBaseTiles = {};
 
 function getTileUrl() {
   var theme = document.documentElement.getAttribute('data-theme');
@@ -1765,13 +1768,13 @@ function initMap(n) {
   var el = document.getElementById(containerId);
   if (!el) return;
 
-  var tileUrl = getTileUrl();
-  var tileAttr = getTileAttr();
+  var tileUrl  = _satMode ? SAT_TILE : getTileUrl();
+  var tileAttr = _satMode ? OSM_ATTR : getTileAttr();
 
   if (n === 0) {
     // Overview map — all lines with exact GTFS shapes
     var m = L.map('map-overview', {zoomControl:true}).setView([59.2790, 15.2150], 12);
-    L.tileLayer(tileUrl, {attribution:tileAttr, maxZoom:18, tileSize:512, zoomOffset:-1}).addTo(m);
+    _mapBaseTiles[0] = L.tileLayer(tileUrl, {attribution:tileAttr, maxZoom:18, tileSize:512, zoomOffset:-1}).addTo(m);
     var lineNums = [1,2,3,4,5,6,7];
     lineNums.forEach(function(ln){
       var shapes = (typeof ROUTE_SHAPES !== 'undefined') && ROUTE_SHAPES[ln];
@@ -1790,6 +1793,7 @@ function initMap(n) {
     makeMarker([59.2748,15.2115], '#00d4ff', 'Örebro Resecentrum', true).addTo(m);
     addDepotMarkers(m);
     addCenterButton(m, null, 12, [59.2790, 15.2150]);
+    addSatToggle(m, 0);
     _maps[0] = m;
     return;
   }
@@ -1797,7 +1801,7 @@ function initMap(n) {
   var r = ROUTES[n];
   if (!r) return;
   var m = L.map('map-' + n, {zoomControl:true}).setView(r.center, r.zoom);
-  L.tileLayer(tileUrl, {attribution:tileAttr, maxZoom:18, tileSize:512, zoomOffset:-1}).addTo(m);
+  _mapBaseTiles[n] = L.tileLayer(tileUrl, {attribution:tileAttr, maxZoom:18, tileSize:512, zoomOffset:-1}).addTo(m);
   var color = LINE_COLORS[n];
 
   // Draw exact GTFS shape if available, else fall back to stop-to-stop
@@ -1822,6 +1826,7 @@ function initMap(n) {
   });
   addDepotMarkers(m);
   addCenterButton(m, routeBounds, r.zoom, r.center);
+  addSatToggle(m, n);
   _maps[n] = m;
 }
 
@@ -1902,6 +1907,40 @@ function addCenterButton(map, bounds, zoom, center) {
     return div;
   };
   btn.addTo(map);
+}
+
+// ── Satellite toggle ──────────────────────────────────────────────────────────
+function addSatToggle(map, key) {
+  var ctrl = L.control({position:'topright'});
+  ctrl.onAdd = function() {
+    var div = L.DomUtil.create('div','leaflet-bar');
+    var a = L.DomUtil.create('a','sat-toggle-btn',div);
+    a.href='#'; a.title='Visa satellitbild';
+    a.style.cssText='font-size:11px;line-height:26px;display:block;padding:0 7px;white-space:nowrap;background:rgba(5,15,30,0.88);color:#00d4ff;border:none;text-decoration:none';
+    a.textContent=_satMode?'🗺 Karta':'🛰 Satellit';
+    if (_satMode) a.title='Visa gatuvy';
+    L.DomEvent.on(div,'click',function(e){L.DomEvent.preventDefault(e);L.DomEvent.stopPropagation(e);toggleSatellite();});
+    return div;
+  };
+  ctrl.addTo(map);
+}
+
+function toggleSatellite() {
+  _satMode = !_satMode;
+  var url  = _satMode ? SAT_TILE : getTileUrl();
+  var attr = _satMode ? OSM_ATTR  : getTileAttr();
+  Object.keys(_maps).forEach(function(k) {
+    var m = _maps[k];
+    var old = _mapBaseTiles[k];
+    if (old) m.removeLayer(old);
+    var t = L.tileLayer(url, {attribution:attr, maxZoom:18, tileSize:512, zoomOffset:-1});
+    t.addTo(m);
+    t.bringToBack();
+    _mapBaseTiles[k] = t;
+  });
+  var lbl = _satMode ? '🗺 Karta' : '🛰 Satellit';
+  var ttl = _satMode ? 'Visa gatuvy' : 'Visa satellitbild';
+  document.querySelectorAll('.sat-toggle-btn').forEach(function(a){a.textContent=lbl;a.title=ttl;});
 }
 
 // ── STOP_LINES: stop_id → [line, line, …] ────────────────────────────────────

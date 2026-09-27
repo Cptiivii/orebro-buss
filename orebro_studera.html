@@ -280,7 +280,10 @@
 
 <script src="orebro_shapes.js"></script>
 <script>
-var MB_TOKEN = 'pk.eyJ1IjoiaWl2aWkiLCJhIjoiY211a'+'XFsOG52MDZ2cjJ3c2Y2cXB6czM5ZyJ9.0GvSIuE5Q2wvXhW4gAt5-Q';
+var MB_TOKEN  = 'pk.eyJ1IjoiaWl2aWkiLCJhIjoiY211a'+'XFsOG52MDZ2cjJ3c2Y2cXB6czM5ZyJ9.0GvSIuE5Q2wvXhW4gAt5-Q';
+var SAT_TILE  = 'https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token=' + MB_TOKEN;
+var DARK_TILE = 'https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}?access_token=' + MB_TOKEN;
+var _satMode  = false;
 var LINE_COLORS = {1:'#e74c3c',2:'#27ae60',3:'#2980b9',4:'#e67e22',5:'#8e44ad',6:'#16a085',7:'#d35400'};
 var LINE_DOOR_POLICY = {1:'alla',2:'alla'};
 
@@ -377,7 +380,21 @@ function checkStopPeak(name) {
 
 // ── Map tile ───────────────────────────────────────────────────────────────────
 function getTileUrl(){
-  return 'https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}?access_token='+MB_TOKEN;
+  return _satMode ? SAT_TILE : DARK_TILE;
+}
+
+function toggleSatellite() {
+  _satMode = !_satMode;
+  var url = getTileUrl();
+  if (SS.map && SS.mapTile) {
+    SS.map.removeLayer(SS.mapTile);
+    SS.mapTile = L.tileLayer(url, {attribution:'© Mapbox', maxZoom:18, tileSize:512, zoomOffset:-1});
+    SS.mapTile.addTo(SS.map);
+    SS.mapTile.bringToBack();
+  }
+  var lbl = _satMode ? '🗺 Karta' : '🛰 Satellit';
+  var ttl = _satMode ? 'Visa gatuvy' : 'Visa satellitbild';
+  document.querySelectorAll('.sat-toggle-btn').forEach(function(a){a.textContent=lbl;a.title=ttl;});
 }
 
 // ── Go to stop ─────────────────────────────────────────────────────────────────
@@ -498,7 +515,19 @@ function openLine(lineNum, dir, startIdx) {
   setTimeout(function(){
     if(!SS.map){
       SS.map=L.map('study-map',{zoomControl:true}).setView(stops[0].c,15);
-      L.tileLayer(getTileUrl(),{attribution:'© Mapbox',maxZoom:18,tileSize:512,zoomOffset:-1}).addTo(SS.map);
+      SS.mapTile=L.tileLayer(getTileUrl(),{attribution:'© Mapbox',maxZoom:18,tileSize:512,zoomOffset:-1}).addTo(SS.map);
+      // Satellit-toggle-knapp
+      var satCtrl=L.control({position:'topright'});
+      satCtrl.onAdd=function(){
+        var div=L.DomUtil.create('div','leaflet-bar');
+        var a=L.DomUtil.create('a','sat-toggle-btn',div);
+        a.href='#'; a.title='Visa satellitbild';
+        a.style.cssText='font-size:11px;line-height:26px;display:block;padding:0 7px;white-space:nowrap;background:rgba(5,15,30,0.88);color:#00d4ff;border:none;text-decoration:none';
+        a.textContent='🛰 Satellit';
+        L.DomEvent.on(div,'click',function(e){L.DomEvent.preventDefault(e);L.DomEvent.stopPropagation(e);toggleSatellite();});
+        return div;
+      };
+      satCtrl.addTo(SS.map);
     } else { SS.map.invalidateSize(); }
     setTimeout(function(){SS.map.invalidateSize();},50);
     setTimeout(function(){SS.map.invalidateSize();SS.map.setView(SS.stops[0].c,15);},200);

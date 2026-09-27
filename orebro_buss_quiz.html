@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Busschaufför — Kunskapstest Örebro</title>
+  <script>(function(){var t=localStorage.getItem('lb-theme');if(t==='light'&&window.innerWidth>700)document.documentElement.setAttribute('data-theme','light');}())</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:      #06101e;
+      --panel:   #0a1628;
+      --panel2:  #0d1e38;
+      --border:  rgba(0,180,220,.14);
+      --text:    #e4eeff;
+      --muted:   #5a7a9a;
+      --cyan:    #00d4ff;
+      --amber:   #ffb700;
+      --green:   #00c96e;
+      --red:     #e74c3c;
+      --sw:      230px;
+    }
+    [data-theme="light"] {
+      --bg:    #f0f4f8;
+      --panel: #ffffff;
+      --panel2:#f5f8fc;
+      --border:rgba(0,100,160,.12);
+      --text:  #0d1e38;
+      --muted: #607080;
+    }
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'Inter',system-ui,sans-serif; display:flex; height:100vh; overflow:hidden; background:var(--bg); color:var(--text); }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────── */
+    .bq-sidebar {
+      width:var(--sw); min-width:var(--sw);
+      background:#040c18;
+      border-right:1px solid rgba(0,180,220,.12);
+      display:flex; flex-direction:column; height:100vh;
+    }
+    .sb-top { padding:14px 12px 10px; border-bottom:1px solid rgba(0,180,220,.1); flex-shrink:0; }
+    .sb-back { display:flex; align-items:center; gap:7px; color:var(--muted); text-decoration:none; font-size:13px; padding:5px 8px; border-radius:6px; transition:all .18s; margin-bottom:10px; }
+    .sb-back:hover { color:var(--cyan); background:rgba(0,212,255,.07); }
+    .sb-brand { display:flex; align-items:center; gap:10px; padding:4px; }
+    .sb-brand-icon { width:36px; height:36px; border-radius:8px; background:rgba(0,212,255,.1); border:1px solid rgba(0,212,255,.2); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .sb-brand-name { font-size:13px; font-weight:800; letter-spacing:.4px; color:var(--cyan); line-height:1.2; }
+    .sb-brand-sub  { color:var(--muted); font-size:10px; margin-top:1px; }
+    .sb-scroll { flex:1; overflow-y:auto; padding:10px 8px 16px; }
+    .sb-scroll::-webkit-scrollbar { width:3px; }
+    .sb-scroll::-webkit-scrollbar-thumb { background:rgba(0,212,255,.25); border-radius:3px; }
+    .sb-sec { color:var(--muted); font-size:9px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; padding:8px 8px 4px; }
+    .sb-ch { display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:7px; cursor:pointer; margin-bottom:2px; transition:all .15s; border:1px solid transparent; }
+    .sb-ch:hover  { background:rgba(0,212,255,.05); border-color:rgba(0,212,255,.12); }
+    .sb-ch.active { background:rgba(0,212,255,.08); border-color:rgba(0,212,255,.2); }
+    .sb-ch-dot  { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .sb-ch-name { color:var(--text); font-size:12px; font-weight:600; flex:1; }
+    .sb-ch-cnt  { font-size:10px; color:var(--muted); }
+    .sb-ch-done { font-size:10px; color:var(--green); }
+    .sb-divider { height:1px; background:rgba(0,180,220,.1); margin:8px 4px; }
+    .sb-action { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:7px; cursor:pointer; color:var(--text); font-size:12px; font-weight:600; transition:all .15s; border:1px solid transparent; }
+    .sb-action:hover { background:rgba(0,212,255,.06); border-color:rgba(0,212,255,.15); color:var(--cyan); }
+    .sb-score-box { background:rgba(0,212,255,.05); border:1px solid rgba(0,212,255,.12); border-radius:8px; padding:10px; margin-top:6px; text-align:center; }
+    .sb-score-num { color:var(--cyan); font-size:22px; font-weight:800; }
+    .sb-score-lbl { color:var(--muted); font-size:10px; margin-top:2px; }
+
+    /* ── MAIN ─────────────────────────────────────────────────────────── */
+    .bq-main { flex:1; height:100vh; overflow-y:auto; background:var(--bg); }
+    .bq-main::-webkit-scrollbar { width:4px; }
+    .bq-main::-webkit-scrollbar-thumb { background:rgba(0,212,255,.2); border-radius:4px; }
+    .screen { display:none; }
+    .screen.active { display:flex; flex-direction:column; min-height:100vh; }
+
+    /* ── CHAPTER SELECT ─────────────────────────────────────────────── */
+    .scr-chapters { padding:48px 32px; align-items:center; }
+    .scr-hdr { text-align:center; margin-bottom:36px; }
+    .scr-eyebrow { font-size:11px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:var(--cyan); margin-bottom:8px; }
+    .scr-title { font-size:30px; font-weight:800; margin-bottom:6px; }
+    .scr-sub   { font-size:15px; color:var(--muted); }
+    .ch-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; max-width:720px; width:100%; margin-bottom:28px; }
+    .ch-card {
+      background:var(--panel); border:1px solid var(--border);
+      border-radius:12px; padding:22px 20px; cursor:pointer;
+      transition:all .2s; position:relative; overflow:hidden;
+    }
+    .ch-card::before { content:''; position:absolute; inset:0; border-radius:12px; opacity:0; transition:opacity .2s; }
+    .ch-card:hover { transform:translateY(-3px); box-shadow:0 8px 28px rgba(0,0,0,.35); }
+    .ch-card:hover::before { opacity:1; }
+    .ch-icon { width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center; margin-bottom:12px; }
+    .ch-name  { font-size:15px; font-weight:700; margin-bottom:4px; }
+    .ch-meta  { font-size:12px; color:var(--muted); }
+    .ch-done-badge { position:absolute; top:12px; right:12px; background:var(--green); color:#000; font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px; }
+
+    .mode-row { display:flex; gap:12px; max-width:720px; width:100%; }
+    .mode-btn { flex:1; padding:14px 16px; background:var(--panel); border:1px solid var(--border); border-radius:10px; cursor:pointer; text-align:center; transition:all .18s; color:var(--text); }
+    .mode-btn:hover { border-color:var(--cyan); background:rgba(0,212,255,.06); }
+    .mode-btn-title { font-size:14px; font-weight:700; margin-bottom:3px; }
+    .mode-btn-desc  { font-size:12px; color:var(--muted); }
+
+    /* ── LEARN ───────────────────────────────────────────────────────── */
+    .scr-learn { padding:40px 32px; align-items:center; }
+    .learn-hdr { width:100%; max-width:680px; display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+    .learn-badge { width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; }
+    .learn-title { font-size:20px; font-weight:800; }
+    .learn-sub   { font-size:13px; color:var(--muted); }
+    .learn-card  { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:28px 32px; max-width:680px; width:100%; margin-bottom:20px; }
+    .learn-card h3 { font-size:13px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:var(--cyan); margin-bottom:14px; }
+    .fact-list { list-style:none; }
+    .fact-item { display:flex; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); font-size:15px; color:var(--text); line-height:1.55; align-items:flex-start; }
+    .fact-item:last-child { border-bottom:none; }
+    .fact-dot  { width:6px; height:6px; border-radius:50%; flex-shrink:0; margin-top:8px; }
+    .learn-actions { display:flex; gap:12px; }
+    .btn-primary { border:none; border-radius:8px; padding:13px 32px; font-size:15px; font-weight:700; font-family:'Inter',sans-serif; cursor:pointer; transition:all .18s; background:var(--cyan); color:#06101e; }
+    .btn-primary:hover { filter:brightness(1.1); transform:translateY(-2px); }
+    .btn-secondary { border:1px solid var(--border); border-radius:8px; padding:13px 24px; font-size:14px; font-weight:600; font-family:'Inter',sans-serif; cursor:pointer; background:none; color:var(--muted); transition:all .18s; }
+    .btn-secondary:hover { border-color:var(--cyan); color:var(--text); }
+
+    /* ── QUIZ ────────────────────────────────────────────────────────── */
+    .scr-quiz { background:var(--bg); }
+    .quiz-hdr { padding:14px 24px; display:flex; align-items:center; gap:14px; flex-shrink:0; border-bottom:1px solid var(--border); }
+    .quiz-ch-label { font-size:13px; font-weight:700; color:var(--text); flex:1; }
+    .quiz-prog-txt { font-size:12px; color:var(--muted); font-weight:600; }
+    .quiz-score-tag { font-size:13px; font-weight:700; color:var(--cyan); background:rgba(0,212,255,.08); border:1px solid rgba(0,212,255,.2); padding:3px 10px; border-radius:6px; }
+    .quiz-progbar  { height:3px; background:var(--border); flex-shrink:0; }
+    .quiz-progfill { height:100%; transition:width .4s ease; }
+    .quiz-q-area   { display:flex; flex-direction:column; align-items:center; padding:40px 24px 20px; flex:1; }
+    .q-card { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:32px 36px; max-width:680px; width:100%; margin-bottom:24px; }
+    .q-num  { font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
+    .q-text { font-size:20px; font-weight:700; color:var(--text); line-height:1.45; }
+    .answers-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; max-width:680px; width:100%; padding:0 0 40px; }
+    .ans-btn {
+      border:1px solid var(--border); border-radius:10px; padding:16px 18px;
+      font-size:15px; font-weight:600; font-family:'Inter',sans-serif;
+      cursor:pointer; transition:all .15s; text-align:left;
+      background:var(--panel); color:var(--text); line-height:1.4;
+    }
+    .ans-btn:hover:not(:disabled) { border-color:var(--cyan); background:rgba(0,212,255,.06); transform:translateY(-1px); }
+    .ans-btn:disabled { cursor:default; }
+    .ans-btn.is-correct { border-color:var(--green)!important; background:rgba(0,201,110,.1)!important; color:var(--green)!important; }
+    .ans-btn.is-wrong   { border-color:var(--red)!important; background:rgba(231,76,60,.08)!important; color:var(--red)!important; opacity:.7; }
+    .ans-btn.is-dimmed  { opacity:.3; }
+
+    /* ── FEEDBACK ────────────────────────────────────────────────────── */
+    .fb-overlay { position:fixed; inset:0; display:flex; align-items:flex-end; justify-content:center; z-index:200; pointer-events:none; opacity:0; transition:opacity .22s; padding-bottom:40px; }
+    .fb-overlay.show { opacity:1; pointer-events:auto; }
+    .fb-panel { background:var(--panel2); border:1px solid var(--border); border-radius:12px; padding:20px 28px; width:100%; max-width:680px; box-shadow:0 16px 48px rgba(0,0,0,.4); border-left:4px solid #ccc; }
+    .fb-correct .fb-panel { border-left-color:var(--green); }
+    .fb-wrong   .fb-panel { border-left-color:var(--red); }
+    .fb-label   { font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:6px; }
+    .fb-correct .fb-label { color:var(--green); }
+    .fb-wrong   .fb-label { color:var(--red); }
+    .fb-explain { font-size:14px; color:var(--text); line-height:1.55; }
+    .fb-next    { margin-top:14px; background:var(--cyan); color:#06101e; border:none; border-radius:7px; padding:9px 22px; font-size:13px; font-weight:700; font-family:'Inter',sans-serif; cursor:pointer; transition:all .15s; }
+    .fb-next:hover { filter:brightness(1.1); }
+
+    /* ── RESULT ──────────────────────────────────────────────────────── */
+    .scr-result { align-items:center; justify-content:center; padding:48px 24px; }
+    .result-card { background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:48px 52px; max-width:560px; width:100%; text-align:center; }
+    .r-icon  { width:72px; height:72px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; }
+    .r-title { font-size:26px; font-weight:800; margin-bottom:6px; }
+    .r-score { font-size:64px; font-weight:800; line-height:1; margin:16px 0 4px; }
+    .r-slbl  { font-size:14px; color:var(--muted); font-weight:600; margin-bottom:8px; }
+    .r-bar   { height:6px; background:var(--border); border-radius:6px; overflow:hidden; margin:12px 0 20px; }
+    .r-bar-fill { height:100%; border-radius:6px; transition:width 1s ease; }
+    .r-msg   { font-size:16px; color:var(--muted); line-height:1.55; margin-bottom:28px; }
+    .r-btns  { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+    .r-btn   { border:none; border-radius:8px; padding:11px 22px; font-size:14px; font-weight:700; font-family:'Inter',sans-serif; cursor:pointer; transition:all .18s; }
+    .r-btn:hover { transform:translateY(-2px); }
+    .r-btn.primary   { background:var(--cyan); color:#06101e; }
+    .r-btn.secondary { background:var(--panel2); border:1px solid var(--border); color:var(--text); }
+
+    /* ── MOBILE ─────────────────────────────────────────────────────── */
+    @media (max-width:700px) {
+      .bq-sidebar    { display:none; }
+      .ch-grid       { grid-template-columns:1fr; }
+      .answers-grid  { grid-template-columns:1fr; }
+      .q-card        { padding:22px 18px; }
+      .q-text        { font-size:17px; }
+      .ans-btn       { font-size:14px; padding:14px 14px; }
+      .result-card   { padding:32px 20px; }
+      .learn-card    { padding:20px 18px; }
+      .mode-row      { flex-direction:column; }
+      .scr-chapters, .scr-learn, .scr-result { padding:28px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── SIDEBAR ─────────────────────────────────────────────────────── -->
+<aside class="bq-sidebar">
+  <div class="sb-top">
+    <a href="index.html" class="sb-back">
+      <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      Tillbaka till LogBook
+    </a>
+    <div class="sb-brand">
+      <div class="sb-brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="1.5" width="22" height="22">
+          <rect x="1" y="7" width="22" height="12" rx="3"/>
+          <path d="M5 7V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2"/>
+          <circle cx="6" cy="20" r="2"/><circle cx="18" cy="20" r="2"/>
+          <line x1="9" y1="13" x2="15" y2="13" stroke-linecap="round" opacity=".5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="sb-brand-name">BUSS — KUNSKAPSTEST</div>
+        <div class="sb-brand-sub">Örebro stadsbusslinjer 1–7</div>
+      </div>
+    </div>
+  </div>
+  <div class="sb-scroll">
+    <div class="sb-sec">Kapitel</div>
+    <div id="sbChapters"></div>
+    <div class="sb-divider"></div>
+    <div class="sb-sec">Övningar</div>
+    <div class="sb-action" onclick="showScreen('chapters')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" width="14" height="14"><rect x="2" y="2" width="12" height="12" rx="1.5" opacity=".4"/><line x1="5" y1="6" x2="11" y2="6" opacity=".7"/><line x1="5" y1="8.5" x2="11" y2="8.5" opacity=".5"/><line x1="5" y1="11" x2="8" y2="11" opacity=".4"/></svg>
+      Välj kapitel
+    </div>
+    <div class="sb-action" onclick="startMixed()">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" width="14" height="14"><path d="M2 5h12M2 8h12M2 11h12" stroke-linecap="round" opacity=".5"/><circle cx="5" cy="5" r="1.5" fill="currentColor" stroke="none"/><circle cx="10" cy="8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7" cy="11" r="1.5" fill="currentColor" stroke="none"/></svg>
+      Blandad quiz (15 frågor)
+    </div>
+    <div class="sb-action" onclick="startAll()">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" width="14" height="14"><circle cx="8" cy="8" r="6" opacity=".4"/><path d="M8 5v3l2.5 2" stroke-linecap="round"/></svg>
+      Alla 41 frågor
+    </div>
+    <div class="sb-divider"></div>
+    <div class="sb-sec">Din poäng</div>
+    <div class="sb-score-box">
+      <div class="sb-score-num" id="totalScoreDisplay">0</div>
+      <div class="sb-score-lbl">rätta svar totalt</div>
+    </div>
+  </div>
+</aside>
+
+<!-- ── MAIN ─────────────────────────────────────────────────────────── -->
+<main class="bq-main">
+
+  <!-- CHAPTER SELECT -->
+  <div class="screen scr-chapters active" id="screen-chapters">
+    <div class="scr-hdr">
+      <div class="scr-eyebrow">Örebro Stadsbuss · Linje 1–7</div>
+      <h1 class="scr-title">Välj kapitel att öva</h1>
+      <p class="scr-sub">Läs fakta, testa sedan dina kunskaper med quiz</p>
+    </div>
+    <div class="ch-grid" id="chGrid"></div>
+    <div class="mode-row">
+      <div class="mode-btn" onclick="startMixed()">
+        <div class="mode-btn-title">Blandad quiz</div>
+        <div class="mode-btn-desc">15 slumpmässiga frågor från alla kapitel</div>
+      </div>
+      <div class="mode-btn" onclick="startAll()">
+        <div class="mode-btn-title">Alla frågor</div>
+        <div class="mode-btn-desc">Alla 41 frågor — visa din helhetskunskap</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEARN -->
+  <div class="screen scr-learn" id="screen-learn">
+    <div class="learn-hdr">
+      <div class="learn-badge" id="learnBadge"></div>
+      <div><div class="learn-title" id="learnTitle"></div><div class="learn-sub" id="learnSub"></div></div>
+    </div>
+    <div class="learn-card" id="learnCard"></div>
+    <div class="learn-actions">
+      <button class="btn-primary" id="learnStartBtn" onclick="startChapterQuiz()">Starta quiz →</button>
+      <button class="btn-secondary" onclick="showScreen('chapters')">Tillbaka</button>
+    </div>
+  </div>
+
+  <!-- QUIZ -->
+  <div class="screen scr-quiz" id="screen-quiz">
+    <div class="quiz-hdr">
+      <div class="quiz-ch-label" id="quizChLabel"></div>
+      <div class="quiz-prog-txt" id="quizProgTxt"></div>
+      <div class="quiz-score-tag" id="quizScoreTag">0 rätt</div>
+    </div>
+    <div class="quiz-progbar"><div class="quiz-progfill" id="quizProgFill"></div></div>
+    <div class="quiz-q-area">
+      <div class="q-card">
+        <div class="q-num" id="qNum"></div>
+        <div class="q-text" id="qText"></div>
+      </div>
+      <div class="answers-grid" id="answersGrid"></div>
+    </div>
+    <div class="fb-overlay" id="fbOverlay">
+      <div class="fb-panel" id="fbPanel">
+        <div class="fb-label" id="fbLabel"></div>
+        <div class="fb-explain" id="fbExplain"></div>
+        <button class="fb-next" onclick="nextQuestion()">Nästa fråga →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="screen scr-result" id="screen-result">
+    <div class="result-card">
+      <div class="r-icon" id="rIcon"></div>
+      <div class="r-title" id="rTitle"></div>
+      <div class="r-score" id="rScore"></div>
+      <div class="r-slbl" id="rSlbl"></div>
+      <div class="r-bar"><div class="r-bar-fill" id="rBarFill"></div></div>
+      <div class="r-msg" id="rMsg"></div>
+      <div class="r-btns">
+        <button class="r-btn primary" id="rRetryBtn">Öva igen</button>
+        <button class="r-btn secondary" onclick="showScreen('chapters')">Kapitelöversikt</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ── QUIZ DATA ──────────────────────────────────────────────────────────────────
+var CHAPTERS = [
+  {
+    id: 'biljetter',
+    title: 'Biljetter & Taxa',
+    color: '#00d4ff',
+    meta: '8 frågor · Priser, validering, biljetttyper',
+    facts: [
+      'Enkelbiljett vuxen: 17 kr (app) · 25 kr (ombord)',
+      '30-dagarsbiljett vuxen: 390 kr (halverat pris sedan 2025)',
+      'Barn 0–6 år: gratis. Max 2 per betalande vuxen — tredje betalar ungdomspris',
+      'Åldersgrupper: 0–6 gratis · 7–19 ungdom · 20–69 vuxen · 70+ senior · Student med giltig ID',
+      'Grön blixt = giltig biljett. Gul = lågt saldo. Röd = ogiltigt/spärrat',
+      'BRT (linje 1&2 i centrum): validering sker på perrongen — inte ombord',
+      'Offline biljettläsare: rapportera till TL omedelbart, invänta instruktioner om fri påstigning',
+      'Du kan INTE neka påstigning om resenären vägrar betala — notera och rapportera'
+    ],
+    questions: [
+      { q:'Vad kostar en enkelbiljett för vuxen köpt via appen?',
+        a:['17 kr','25 kr','35 kr','50 kr'], correct:0,
+        explain:'Via appen kostar enkelbiljetten 17 kr. Köpt ombord kostar den 25 kr.' },
+      { q:'Vad ska du göra om en resenär saknar biljett och vägrar betala?',
+        a:['Neka påstigning','Notera tid och hållplats — rapportera till trafikledning','Ring polisen direkt','Stanna bussen tills resenären betalar'], correct:1,
+        explain:'Du kan inte neka påstigning. Notera incident (tid, hållplats) och rapportera till TL. Biljettinspektör hanterar tilläggsavgifter.' },
+      { q:'Hur gamla barn reser gratis med en betalande vuxen?',
+        a:['0–3 år','0–6 år','0–10 år','0–12 år'], correct:1,
+        explain:'Barn 0–6 år reser gratis. Max 2 barn per betalande vuxen — det tredje barnet betalar ungdomspris.' },
+      { q:'Vad innebär en röd blixt med dubbel pip på kortläsaren?',
+        a:['Lågt saldo på kortet','Läsaren är offline','Ogiltigt, spärrat eller okänt kort','Kort registrerat i fel zon'], correct:2,
+        explain:'Röd blixt + dubbel pip = ogiltigt, spärrat eller okänt kort. Be om annan biljett eller ombordköp.' },
+      { q:'Vilken åldersgrupp betalar vuxenpris?',
+        a:['18–65 år','20–65 år','20–69 år','18–70 år'], correct:2,
+        explain:'Vuxenpris gäller 20–69 år. Seniorer 70+ betalar seniorpris. Ungdomspris gäller 7–19 år.' },
+      { q:'Vad gäller vid BRT-påstigning på linje 1 och 2 i centrum?',
+        a:['Resenärer validerar ombord hos chauffören','Resenärer validerar på perrongen','Chauffören kontrollerar biljetter vid alla dörrar','Inga biljetter kontrolleras vid BRT'], correct:1,
+        explain:'Vid BRT-hållplatser i centrum validerar resenärerna på perrongen — inte ombord. Alla dörrar öppnas.' },
+      { q:'Vad gör du om biljettläsaren ombord är offline?',
+        a:['Starta om fordonet manuellt','Tillåt fri påstigning utan att rapportera','Rapportera till trafikledning och invänta instruktioner','Stäng dörrarna och kör inte vidare'], correct:2,
+        explain:'Kontrollera lampor → rapportera till TL → TL beslutar om fri påstigning eller manuell notering. Byt aldrig hårdvara själv.' },
+      { q:'Vad kostar en 30-dagarsbiljett för vuxen fr.o.m. 2025?',
+        a:['690 kr','490 kr','390 kr','290 kr'], correct:2,
+        explain:'30-dagars vuxen kostar 390 kr efter att priset halverades 2025.' }
+    ]
+  },
+  {
+    id: 'regler',
+    title: 'Reglerhållplatser & Tidtabell',
+    color: '#ffb700',
+    meta: '7 frågor · Precision, AVLS, turtäthet',
+    facts: [
+      'Reglerhållplats (◆ R) = bindande avgångstid — du avgår aldrig i förtid',
+      'Tidigt avvikande är ett regelbrott — resenärer planerar sin resa efter tidtabellen',
+      'AVLS loggar position och tidavvikelser automatiskt till trafikledning och appar',
+      'BRT högtrafik (linje 1&2): 10 minuters turtäthet — hårt bevakat',
+      'AVLS-bortfall: prioriteringssignaler (grön våg) slutar fungera → kör som vanliga signaler',
+      'AVLS nere: notera alla Reglerhållplatser manuellt i körjournalen',
+      'Gul blixt på kortläsaren = lågt saldo, informera om att ladda på'
+    ],
+    questions: [
+      { q:'Vad är en Reglerhållplats?',
+        a:['En hållplats med extra säkerhetsrutiner','En hållplats med bindande avgångstid i tidtabellen','En hållplats vid trafikljus eller korsning','En hållplats där resenärer byter linje'], correct:1,
+        explain:'Vid Reglerhållplatser är avgångstiden i tidtabellen bindande — du väntar till exakt tid och avgår aldrig i förtid.' },
+      { q:'Vad gör du om du ankommer för tidigt till en Reglerhållplats?',
+        a:['Kör direkt vidare för att hålla trafiken flytande','Väntar till exakt avgångstid enligt tidtabellen','Informerar trafikledning och ber om instruktioner','Justerar hastigheten på nästa sträcka'], correct:1,
+        explain:'Reglerhållplatsens syfte är tidsprecision. Resenärer vet att bussen avgår exakt — tidigt avvikande bryter mot det löftet.' },
+      { q:'Hur markeras Reglerhållplatser på kartan i stadsbussguiden?',
+        a:['Blå cirkel med linjenummer','Rött kryss','Amber diamant med R (◆ R)','Grön fyrkant'], correct:2,
+        explain:'◆ R i amber = Reglerhållplats. Syns på kartan och i studielägets tidslinje. Även markerat i tidtabellen.' },
+      { q:'Vad loggar AVLS automatiskt?',
+        a:['Antal påstigande resenärer','Bränsleförbrukning per tur','Fordonsposition och tidavvikelser','Biljettintäkter per linje'], correct:2,
+        explain:'AVLS rapporterar position och avgångstid till trafikledning och passagerar-appar i realtid. Avvikelser syns i dina körrapporter.' },
+      { q:'Vad händer med prioriteringssignalerna (grön våg) vid AVLS-bortfall?',
+        a:['De slocknar och ger alltid grönt','De stängs av — inga signaler fungerar','De fungerar som vanliga trafiksignaler','De blinkar orange som varning'], correct:2,
+        explain:'Grön våg aktiveras normalt av AVLS-signalen. Vid AVLS-bortfall behandlas ljusen som vanliga trafiksignaler.' },
+      { q:'Hur ofta kör linje 1 och 2 under högtrafik?',
+        a:['Var 5:e minut','Var 10:e minut','Var 15:e minut','Var 20:e minut'], correct:1,
+        explain:'BRT-linjerna 1 och 2 kör med 10 minuters turtäthet under högtrafik. Turtätheten är hårt bevakad.' },
+      { q:'Vad ska du notera manuellt i körjournalen om AVLS är nere?',
+        a:['Alla hållplatser och stopptider','Antal resenärer per hållplats','Reglerhållplatserna','Alla avvikelser från körturen'], correct:2,
+        explain:'Reglerhållplatser är tidskritiska. Om AVLS inte loggar dem automatiskt måste du dokumentera dem manuellt.' }
+    ]
+  },
+  {
+    id: 'linjer',
+    title: 'Linjerna 1–7',
+    color: '#27ae60',
+    meta: '8 frågor · Rutter, terminaler, depåer',
+    facts: [
+      'Linje 1: Vivalla ↔ Brickebacken (BRT, delar körfält med linje 2)',
+      'Linje 2: Mellringe ↔ Universitetsplatsen (BRT)',
+      'Linje 3: Lundby ↔ Solhaga via Vivalla och Rosta centrum (diagonalrutt)',
+      'Linje 4: Rynningeåsen ↔ Marieberg via USÖ',
+      'Linje 5: Hovsta ↔ Tybble',
+      'Linje 6: Universitetet ↔ Björkhaga',
+      'Linje 7: Hjälsta ↔ Södra Ladugårdsängen',
+      'Depå: Nobina Örebro Centralgaraget, Industrigatan',
+      'Personalvila: Örebro Resecentrum och Vivalla centrum (terminus linje 1/3)'
+    ],
+    questions: [
+      { q:'Vilka linjer trafikerar BRT-stråket i centrala Örebro?',
+        a:['Linje 1 och 3','Linje 1 och 2','Linje 2 och 4','Linje 3 och 5'], correct:1,
+        explain:'Linje 1 (Vivalla–Brickebacken) och linje 2 (Mellringe–Universitetsplatsen) delar dedikerade BRT-körfält i centrum.' },
+      { q:'Vart går linje 3?',
+        a:['Rynningeåsen–Marieberg','Hovsta–Tybble','Lundby–Solhaga via Vivalla och Rosta centrum','Hjälsta–Södra Ladugårdsängen'], correct:2,
+        explain:'Linje 3 är en diagonalrutt som kopplar ihop nordväst (Lundby/Vivalla) med östra sidan (Rosta/Solhaga) via centrum.' },
+      { q:'Vilken linje passerar Universitetssjukhuset Örebro (USÖ)?',
+        a:['Linje 3','Linje 4','Linje 5','Linje 6'], correct:1,
+        explain:'Linje 4 (Rynningeåsen–Marieberg) passerar hållplatsen USÖ M-huset. Hög belastning dygnet runt.' },
+      { q:'Var ligger Nobina Örebros centralgarage (depå)?',
+        a:['Södra Grev Rosengatan','Industrigatan','Fabriksgatan','Universitetsgatann'], correct:1,
+        explain:'Depån på Industrigatan är där bussar signeras på/av. Härifrån startar och slutar alla turer.' },
+      { q:'Vart går linje 5?',
+        a:['Mellringe–Universitetsplatsen','Universitetet–Björkhaga','Hovsta–Tybble','Hjälsta–Södra Ladugårdsängen'], correct:2,
+        explain:'Linje 5 kör nordväst–sydost, från Hovsta via centrum till Tybble.' },
+      { q:'Vart går linje 7?',
+        a:['Hjälsta–Södra Ladugårdsängen','Mellringe–Universitetsplatsen','Rynningeåsen–Marieberg','Hovsta–Tybble'], correct:0,
+        explain:'Linje 7 kör öst–sydväst: Hjälsta–Södra Ladugårdsängen via centrum.' },
+      { q:'Var finns personalvila vid Vivalla centrum?',
+        a:['Nobina-kontor med personalrum','Rastmöjlighet — tid för rast enligt körplan','Trafikledningscentral','Bussgarage och verkstad'], correct:1,
+        explain:'Vivalla centrum är terminus för linje 1 och 3. Rastmöjlighet finns — rast tas enligt körplan.' },
+      { q:'Vart går linje 6?',
+        a:['Rynningeåsen–Marieberg','Lundby–Solhaga','Universitetet–Björkhaga','Hovsta–Tybble'], correct:2,
+        explain:'Linje 6 kör Universitetet–Björkhaga. Passerar Örebro centrum och södra stadsdelar.' }
+    ]
+  },
+  {
+    id: 'teknik',
+    title: 'Fordonsteknik & System',
+    color: '#8e44ad',
+    meta: '6 frågor · AVLS, YKB, nödsystem',
+    facts: [
+      'AVLS = Automatiskt Fordonslokaliseringssystem — GPS-baserat, rapporterar position och tid',
+      'YKB = Yrkeskompetensbevis — obligatoriskt, grundutbildning 280 h, fortbildning 35 h var 5:e år',
+      'Mjuk omstart via förarskärmens menyval — byt aldrig hårdvara själv',
+      'Nödutgång: alltid mekanisk — fungerar utan el',
+      'Incidentrapport: senast vid turslutet för alla tekniska fel som påverkat passagerarna',
+      'AVLS offline = prioriteringssignaler fungerar inte → kör som vanliga signaler'
+    ],
+    questions: [
+      { q:'Vad är förkortningen AVLS?',
+        a:['Automatiserat Valideringslokalsystem','Automatiskt Fordonslokaliseringssystem','Avancerat Videolarmssystem','Anpassat Vagnledningssystem'], correct:1,
+        explain:'AVLS = Automatiskt Fordonslokaliseringssystem. GPS-baserat system som rapporterar position och avgångstid i realtid.' },
+      { q:'Vad innebär YKB?',
+        a:['Yrkeskörarbetsbrev','Yrkeskompetensbevis','Yrkeskunskapsintyg','Yrkeskvalifikationsbevis'], correct:1,
+        explain:'YKB = Yrkeskompetensbevis. Obligatorisk certifiering för bussförare i yrkestrafik. Grundutbildning 280 h + fortbildning 35 h var 5:e år.' },
+      { q:'Hur lång är YKB-grundutbildningen?',
+        a:['140 timmar','200 timmar','280 timmar','320 timmar'], correct:2,
+        explain:'YKB-grundutbildningen kräver 280 timmar. Fortbildning för att förnya behörigheten är 35 timmar var 5:e år.' },
+      { q:'Vad gör du om fordonsdatorn hänger sig och mjuk omstart inte löser det?',
+        a:['Stäng av fordonet och starta om','Byt ut hårdvaran om möjligt','Kontakta tekniker via trafikledning','Kör som vanligt och rapportera vid garaget'], correct:2,
+        explain:'Byt aldrig ut eller återstarta hårdvara själv. Kontakta TL som kopplar till fordonsteknik.' },
+      { q:'Hur fungerar nödutgången vid brand eller olycka?',
+        a:['Elektrisk — kräver strömförsörjning','Radiostyrd från trafikledningen','Mekanisk — fungerar utan el','Kräver nyckel från förarplatsen'], correct:2,
+        explain:'Nödutgången är alltid mekanisk och fungerar utan el. Viktigt att känna till för snabb utrymning.' },
+      { q:'När ska incidentrapporten vara ifylld?',
+        a:['Inom 24 timmar','Senast vid turslutet','Nästa arbetsdag','Omedelbart via radio under körturen'], correct:1,
+        explain:'Incidentrapport fylls i senast vid turslutet för alla tekniska fel som påverkat passagerarna under turen.' }
+    ]
+  },
+  {
+    id: 'bemotande',
+    title: 'Resenärsbemötande & Säkerhet',
+    color: '#e67e22',
+    meta: '7 frågor · Bemötande, säkerhet, tillgänglighet',
+    facts: [
+      'Ring 112 vid olycka, brand, medicinsk nödsituation eller allvarligt hot',
+      'Grundton: alltid neutral och respektfull — sänk aldrig tonen',
+      'Du FÅR be störande resenärer lämna bussen. Vid hot/våld: ring 112 + kontakta TL',
+      'Rullstol: aktivera ramp/kneeling utan att resenären behöver be om det',
+      'Skateboard och sparkcykel: ej tillåtna ombord (inget undantag)',
+      'Hundar/husdjur: gratis om kopplade eller i bur. Tjänstehundar alltid tillåtna',
+      'Klagomål på priser: hänvisa till Länstrafikens kundtjänst 0771-22 40 00',
+      'Fyll alltid i incidentrapport efter incident: våldsbrott, skadegörelse, nödsituation'
+    ],
+    questions: [
+      { q:'Vad ringer du vid olycka, brand eller allvarligt hot ombord?',
+        a:['Trafikledningens direktnummer','Nobinas kundtjänst','112','Länstrafikens kundtjänst'], correct:2,
+        explain:'112 gäller vid olycka, brand, medicinsk nödsituation eller allvarligt hot. Kontakta sedan alltid trafikledning.' },
+      { q:'Hur ska du alltid bemöta resenärer?',
+        a:['Vänligt men korrekt avvaktande','Neutralt och respektfullt — oavsett hur resenären beter sig','Formellt och distanserat','Personligt och informellt för att skapa trygghet'], correct:1,
+        explain:'Neutral och respektfull grundton — oavsett vad. Sänk aldrig tonen. Det sänker konfliktnivån direkt.' },
+      { q:'Vad gör du vid en störande resenär ombord?',
+        a:['Kör vidare och ignorera situationen','Ring 112 direkt','Du FÅR be dem lämna bussen — ring TL vid allvarliga incidenter','Stanna bussen tills de lugnat ner sig'], correct:2,
+        explain:'Du har rätt att be störande resenärer lämna. Vid hot eller våld: ring 112 och stanna på säker plats. Kontakta alltid TL.' },
+      { q:'Är skateboard tillåten ombord om den bärs i handen?',
+        a:['Ja, om resenären är under 16 år','Ja, om den är under 80 cm','Nej — förbjudet utan undantag','Ja, alltid'], correct:2,
+        explain:'Skateboard och sparkcykel är ej tillåtna ombord. Inget undantag för ålder eller hur den bärs.' },
+      { q:'Vad gäller för hund ombord på bussen?',
+        a:['Hundar är ej tillåtna i kollektivtrafiken','Gratis om kopplad eller i bur','Kräver en biljett som passagerare','Tillåtna bara i bakre delen av bussen'], correct:1,
+        explain:'Hundar, katter och husdjur reser gratis om kopplade eller i bur. Tjänstehundar alltid tillåtna och får sitta i framsektionen.' },
+      { q:'Vart hänvisar du resenärer med klagomål på biljettpriser?',
+        a:['Till Nobinas kundtjänst','Till Trafikverkets kundservice','Till Länstrafikens kundtjänst','Du hanterar det direkt ombord'], correct:2,
+        explain:'Du behöver inte försvara Länstrafikens prispolicy. Hänvisa till kundtjänst 0771-22 40 00.' },
+      { q:'Vad ska du göra proaktivt när en rullstolsanvändare stiger på?',
+        a:['Vänta tills resenären ber om hjälp','Fäll upp knäskydd och aktivera ramp utan att bli ombedd','Fråga om de behöver hjälp och invänta svar','Öppna bara framdörren extra länge'], correct:1,
+        explain:'Fäll upp knäskydd och aktivera ramp/kneeling utan att resenären behöver be. Tillgängligheten är inte resenärens ansvar.' }
+    ]
+  },
+  {
+    id: 'storningar',
+    title: 'Störningar & Omledningar',
+    color: '#e74c3c',
+    meta: '5 frågor · VA-arbeten, omledningar, rutiner',
+    facts: [
+      'VA-arbeten centrala Örebro: 20 sep 2026 – sommaren 2027 — berör linje 1 och 3',
+      'Tegnérlunden: stängd. Provisorisk hållplats Tegnérgatan ca 80 m österut',
+      'Baronbackarna: tillfälligt förflyttad ~100 m norrut (linje 3)',
+      'Kontrollera ALLTID aktuell omledning i Svealandstrafikens förarportal före avgång',
+      'Defekt BRT-hållplatsvaliderare: rapportera till TL omedelbart — du stannar inte trafiken'
+    ],
+    questions: [
+      { q:'Varför är hållplatsen Tegnérlunden stängd 2026–2027?',
+        a:['Renovering av perrongen','VA-arbeten — vatten och avlopp','Ny BRT-dragning i centrum','Parkarbeten och ny trädplantering'], correct:1,
+        explain:'VA-arbeten (vatten och avloppsnät) i centrala Örebro. Tegnérlunden ersätts av Tegnérgatan ca 80 m österut.' },
+      { q:'Vilka linjer berörs av VA-störningarna i centrala Örebro?',
+        a:['Linje 1 och 2','Linje 2 och 3','Linje 1 och 3','Alla linjer 1–7'], correct:2,
+        explain:'Linje 1 och 3 berörs av Tegnérlunden-stängningen. Linje 3 påverkas även av Baronbackarnas tillfälliga förflyttning.' },
+      { q:'Var hittar du aktuell omledningsinformation före avgång?',
+        a:['Länstrafikens app (resenärsvyn)','Svealandstrafikens förarportal','Nobinas intranät','GTFS-realtidsdata via Trafiklab'], correct:1,
+        explain:'Svealandstrafikens förarportal innehåller alltid aktuella turlistor, servicemeddelanden och omledningsinformation för chauffören.' },
+      { q:'Hur långt är Baronbackarna tillfälligt förflyttad?',
+        a:['~50 m söderut','~100 m norrut','~200 m österut','Hållplatsen är stängd'], correct:1,
+        explain:'Baronbackarna är tillfälligt förflyttad ca 100 meter norrut under pågående arbeten. Delar störning med linje 1.' },
+      { q:'Vad gör du om en BRT-hållplatsvaliderare på perrongen är trasig?',
+        a:['Tillåt fri påstigning utan åtgärd','Stanna trafiken tills den är lagad','Rapportera till trafikledning omedelbart','Skicka resenärerna till nästa hållplats'], correct:2,
+        explain:'Rapportera direkt till TL. Det är TL:s beslut hur situationen hanteras — du stannar inte trafiken.' }
+    ]
+  },
+  {
+    id: 'biljettmaskin',
+    title: 'Biljettmaskin — LT Örebro',
+    color: '#00b4d8',
+    meta: '8 frågor · Knappar, funktioner, biljetttyper',
+    facts: [
+      'Start — logga in i biljettmaskinen',
+      'Nattläge — gör skärmen mörk (t.ex. vid nattdrift)',
+      'Senast sålda — säljer om föregående biljett direkt',
+      'Reskassa — laddar resenärens reskassa/kort',
+      'HPL sälj — säljer biljett kopplad till specifik linje (hållplatsbaserad)',
+      'Kortkontroll — visar vad biljettbäraren (kortet) innehåller',
+      'Välj dest. — söker destination/zon för biljettköp',
+      'Skiftnyckel — ger tillgång till extra funktioner',
+      'Skriv ut kvitto — skriver ut kvitto om resenären önskar',
+      'Avbryt — återgår till startsidan (avbryter pågående transaktion)',
+      'Elekt. biljett — används vid köp med reskassa (elektronisk biljett)',
+      'Pappersbiljett — ställer ut pappersbiljett (t.ex. till barn som reser ensam)',
+      'Exemplen i handboken är från Örebro — knapparnas placering kan skilja i länet'
+    ],
+    questions: [
+      { q:'Vilken knapp använder du för att logga in i biljettmaskinen?',
+        a:['Kassa','Start','OK','Skiftnyckel'], correct:1,
+        explain:'Start används för att logga in. Det är alltid det första du trycker när du startar biljettmaskinen.' },
+      { q:'Vad gör knappen "Senast sålda"?',
+        a:['Visar försäljningshistorik','Säljer om den senaste biljetten direkt','Avslutar skiftet','Skriver ut dagsrapport'], correct:1,
+        explain:'Senast sålda säljer om föregående biljett. Praktiskt när en resenär vill köpa exakt samma biljett som just såldes.' },
+      { q:'Vad används "Reskassa"-knappen till?',
+        a:['Öppnar kassan för kontanthantering','Laddar resenärens reskassa/kort','Kontrollerar saldo','Säljer kontantbiljett'], correct:1,
+        explain:'Reskassa används för att ladda reskassa på resenärens kort.' },
+      { q:'Vad är skillnaden mellan "Elekt. biljett" och "Pappersbiljett"?',
+        a:['Ingen skillnad — båda är digitala','Elekt. biljett används vid reskassa-köp, Pappersbiljett skriver ut en fysisk biljett','Pappersbiljett är billigare','Elekt. biljett kräver app'], correct:1,
+        explain:'Elekt. biljett = köp med reskassa (elektronisk). Pappersbiljett = utskrift, t.ex. när förälder köper till barn som reser ensam.' },
+      { q:'Vad gör knappen "Avbryt"?',
+        a:['Stänger av maskinen','Loggar ut chauffören','Återgår till startsidan och avbryter pågående transaktion','Avbryter bara senaste inmatning'], correct:2,
+        explain:'Avbryt tar dig tillbaka till startsidan och avbryter hela den pågående transaktionen.' },
+      { q:'Vad används "Kortkontroll" till?',
+        a:['Kontrollerar om kortläsaren fungerar','Visar vad biljettbäraren (kortet) innehåller','Blockerar ett misstänkt kort','Loggar kortanvändning'], correct:1,
+        explain:'Kortkontroll visar vad biljettbäraren innehåller — saldo, biljetter, periodbiljetter etc.' },
+      { q:'Vad gör knappen "HPL sälj"?',
+        a:['Öppnar heltidspersonalens lönelista','Säljer biljett kopplad till specifik linje/hållplats','Säljer helresorsbiljett','Hanterar periodkort'], correct:1,
+        explain:'HPL sälj = Hållplatsbaserad försäljning. Säljer biljett knuten till en specifik linje.' },
+      { q:'Vad gäller knapparnas placering i handboken?',
+        a:['Placeringen är identisk på alla maskiner i länet','Exemplen är från Örebro — placeringen kan variera i länet','Alla maskiner har touchskärm — inga knappar','Placeringen skiljer bara i Karlskoga'], correct:1,
+        explain:'Handbokens exempel är från en biljettmaskin i Örebro. Knappvalen fungerar likadant men placeringen av knapparna kan se olika ut runt om i länet.' }
+    ]
+  }
+];
+
+// ── STATE ──────────────────────────────────────────────────────────────────────
+var state = {
+  activeChapterId: null,
+  queue: [],
+  qIdx: 0,
+  score: 0,
+  totalScore: 0,
+  answered: false,
+  chScores: {}  // id → {correct, total}
+};
+
+// ── INIT ───────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function(){
+  buildChGrid();
+  buildSbChapters();
+  loadScore();
+});
+
+function buildChGrid() {
+  var grid = document.getElementById('chGrid');
+  grid.innerHTML = '';
+  CHAPTERS.forEach(function(ch) {
+    var done = state.chScores[ch.id];
+    var card = document.createElement('div');
+    card.className = 'ch-card';
+    card.style.borderLeftColor = ch.color;
+    card.style.borderLeftWidth = '3px';
+    card.onclick = function(){ selectChapter(ch.id); };
+    card.innerHTML =
+      '<div class="ch-icon" style="background:' + ch.color + '18;border:1px solid ' + ch.color + '30">' +
+        chIcon(ch.color) + '</div>' +
+      '<div class="ch-name">' + ch.title + '</div>' +
+      '<div class="ch-meta" style="color:' + ch.color + '99">' + ch.meta + '</div>' +
+      (done ? '<div class="ch-done-badge">' + done.correct + '/' + done.total + ' rätt</div>' : '');
+    grid.appendChild(card);
+  });
+}
+
+function buildSbChapters() {
+  var sb = document.getElementById('sbChapters');
+  sb.innerHTML = '';
+  CHAPTERS.forEach(function(ch) {
+    var div = document.createElement('div');
+    div.className = 'sb-ch';
+    div.id = 'sb-' + ch.id;
+    div.onclick = function(){ selectChapter(ch.id); };
+    div.innerHTML =
+      '<div class="sb-ch-dot" style="background:' + ch.color + '"></div>' +
+      '<div class="sb-ch-name">' + ch.title + '</div>' +
+      '<div class="sb-ch-cnt">' + ch.questions.length + '</div>';
+    sb.appendChild(div);
+  });
+}
+
+function chIcon(color) {
+  return '<svg viewBox="0 0 20 20" fill="none" stroke="' + color + '" stroke-width="1.4" width="20" height="20">' +
+    '<rect x="3" y="2" width="14" height="16" rx="2" opacity=".35"/>' +
+    '<line x1="6" y1="7" x2="14" y2="7" stroke-linecap="round" opacity=".7"/>' +
+    '<line x1="6" y1="10.5" x2="14" y2="10.5" stroke-linecap="round" opacity=".5"/>' +
+    '<line x1="6" y1="14" x2="10" y2="14" stroke-linecap="round" opacity=".4"/>' +
+    '</svg>';
+}
+
+function selectChapter(id) {
+  var ch = CHAPTERS.find(function(c){ return c.id===id; });
+  if (!ch) return;
+  state.activeChapterId = id;
+
+  // Update sidebar active state
+  document.querySelectorAll('.sb-ch').forEach(function(e){ e.classList.remove('active'); });
+  var sbEl = document.getElementById('sb-' + id);
+  if (sbEl) sbEl.classList.add('active');
+
+  // Build learn screen
+  document.getElementById('learnBadge').style.cssText =
+    'width:36px;height:36px;border-radius:8px;background:' + ch.color + '1a;border:1px solid ' + ch.color + '40;display:flex;align-items:center;justify-content:center';
+  document.getElementById('learnBadge').innerHTML = chIcon(ch.color);
+  document.getElementById('learnTitle').textContent = ch.title;
+  document.getElementById('learnSub').textContent = ch.meta;
+
+  var card = document.getElementById('learnCard');
+  card.innerHTML = '<h3>Nyckelkunskaper</h3><ul class="fact-list">' +
+    ch.facts.map(function(f){
+      return '<li class="fact-item">' +
+        '<span class="fact-dot" style="background:' + ch.color + '"></span>' +
+        '<span>' + f + '</span></li>';
+    }).join('') + '</ul>';
+
+  showScreen('learn');
+}
+
+function startChapterQuiz() {
+  var ch = CHAPTERS.find(function(c){ return c.id===state.activeChapterId; });
+  if (!ch) return;
+  runQuiz(ch.questions.map(function(q,i){ return {chId:ch.id, chTitle:ch.title, chColor:ch.color, q:q, origIdx:i}; }));
+}
+
+function startMixed() {
+  var pool = [];
+  CHAPTERS.forEach(function(ch){
+    ch.questions.forEach(function(q,i){
+      pool.push({chId:ch.id, chTitle:ch.title, chColor:ch.color, q:q, origIdx:i});
+    });
+  });
+  shuffle(pool);
+  runQuiz(pool.slice(0,15));
+}
+
+function startAll() {
+  var pool = [];
+  CHAPTERS.forEach(function(ch){
+    ch.questions.forEach(function(q,i){
+      pool.push({chId:ch.id, chTitle:ch.title, chColor:ch.color, q:q, origIdx:i});
+    });
+  });
+  shuffle(pool);
+  runQuiz(pool);
+}
+
+function runQuiz(queue) {
+  state.queue = queue;
+  state.qIdx = 0;
+  state.score = 0;
+  state.answered = false;
+  showScreen('quiz');
+  renderQuestion();
+}
+
+function renderQuestion() {
+  var item = state.queue[state.qIdx];
+  if (!item) { showResult(); return; }
+  state.answered = false;
+  hideFeedback();
+
+  var color = item.chColor;
+  document.getElementById('quizChLabel').textContent = item.chTitle;
+  document.getElementById('quizChLabel').style.color = color;
+  document.getElementById('quizProgTxt').textContent = (state.qIdx+1) + ' / ' + state.queue.length;
+  document.getElementById('quizScoreTag').textContent = state.score + ' rätt';
+  document.getElementById('qNum').textContent = 'Fråga ' + (state.qIdx+1) + ' — ' + item.chTitle;
+  document.getElementById('qNum').style.color = color;
+  document.getElementById('qText').textContent = item.q.q;
+
+  var pct = Math.round(state.qIdx / state.queue.length * 100);
+  document.getElementById('quizProgFill').style.width = pct + '%';
+  document.getElementById('quizProgFill').style.background = color;
+
+  var grid = document.getElementById('answersGrid');
+  grid.innerHTML = '';
+  var shuffled = item.q.a.map(function(text,i){ return {text:text, origIdx:i}; });
+  shuffle(shuffled);
+  item._shuffled = shuffled;
+
+  shuffled.forEach(function(ans){
+    var btn = document.createElement('button');
+    btn.className = 'ans-btn';
+    btn.textContent = ans.text;
+    btn.dataset.orig = ans.origIdx;
+    btn.onclick = function(){ if (!state.answered) checkAnswer(this, item, ans.origIdx); };
+    grid.appendChild(btn);
+  });
+}
+
+function checkAnswer(btn, item, origIdx) {
+  state.answered = true;
+  var correct = origIdx === item.q.correct;
+  if (correct) {
+    state.score++;
+    state.totalScore++;
+    saveScore();
+  }
+
+  // Mark buttons
+  document.querySelectorAll('.ans-btn').forEach(function(b){
+    var oi = parseInt(b.dataset.orig);
+    if (oi === item.q.correct) b.classList.add('is-correct');
+    else if (oi === origIdx && !correct) b.classList.add('is-wrong');
+    else b.classList.add('is-dimmed');
+    b.disabled = true;
+  });
+  document.getElementById('quizScoreTag').textContent = state.score + ' rätt';
+
+  // Show feedback
+  var overlay = document.getElementById('fbOverlay');
+  overlay.className = 'fb-overlay show ' + (correct ? 'fb-correct' : 'fb-wrong');
+  document.getElementById('fbLabel').textContent = correct ? 'Rätt' : 'Fel — rätt svar: ' + item.q.a[item.q.correct];
+  document.getElementById('fbExplain').textContent = item.q.explain;
+}
+
+function nextQuestion() {
+  state.qIdx++;
+  hideFeedback();
+  renderQuestion();
+}
+
+function hideFeedback() {
+  document.getElementById('fbOverlay').className = 'fb-overlay';
+}
+
+function showResult() {
+  var q = state.queue.length;
+  var s = state.score;
+  var pct = Math.round(s / q * 100);
+  var pass = pct >= 70;
+  var color = pct >= 90 ? '#00c96e' : pct >= 70 ? '#00d4ff' : '#e74c3c';
+
+  // Record chapter score if single-chapter quiz
+  if (state.activeChapterId && state.queue.every(function(i){ return i.chId===state.activeChapterId; })) {
+    state.chScores[state.activeChapterId] = {correct:s, total:q};
+    buildChGrid();
+  }
+
+  document.getElementById('rIcon').innerHTML = pct >= 70 ?
+    '<svg viewBox="0 0 24 24" fill="none" stroke="' + color + '" stroke-width="1.5" width="36" height="36"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>' :
+    '<svg viewBox="0 0 24 24" fill="none" stroke="' + color + '" stroke-width="1.5" width="36" height="36"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+  document.getElementById('rIcon').style.cssText = 'width:72px;height:72px;border-radius:50%;background:' + color + '18;border:1px solid ' + color + '40;display:flex;align-items:center;justify-content:center;margin:0 auto 20px';
+  document.getElementById('rTitle').textContent = pct >= 90 ? 'Utmärkt!' : pct >= 70 ? 'Godkänt' : 'Öva mer';
+  document.getElementById('rScore').textContent = pct + '%';
+  document.getElementById('rScore').style.color = color;
+  document.getElementById('rSlbl').textContent = s + ' rätt av ' + q + ' frågor';
+  document.getElementById('rBarFill').style.width = pct + '%';
+  document.getElementById('rBarFill').style.background = color;
+  document.getElementById('rMsg').textContent = pct >= 90 ?
+    'Du behärskar detta kapitel väl. Prova ett annat kapitel eller kör alla frågor.' :
+    pct >= 70 ?
+    'Godkänt resultat. Läs igenom de frågor du missade och gör om kapitlet för att säkra kunskaperna.' :
+    'Läs igenom fakta-avsnittet igen och öva tills du når 70% eller mer. Alla svar går att lära sig.';
+  document.getElementById('rRetryBtn').onclick = function(){
+    if (state.activeChapterId && state.queue.every(function(i){ return i.chId===state.activeChapterId; })) {
+      startChapterQuiz();
+    } else { startMixed(); }
+  };
+  showScreen('result');
+}
+
+// ── HELPERS ────────────────────────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById('screen-'+id).classList.add('active');
+}
+
+function shuffle(arr) {
+  for (var i=arr.length-1;i>0;i--){
+    var j=Math.floor(Math.random()*(i+1));
+    var t=arr[i]; arr[i]=arr[j]; arr[j]=t;
+  }
+  return arr;
+}
+
+function saveScore() {
+  document.getElementById('totalScoreDisplay').textContent = state.totalScore;
+  try { localStorage.setItem('bq-total', state.totalScore); } catch(e){}
+}
+
+function loadScore() {
+  try {
+    var saved = parseInt(localStorage.getItem('bq-total'));
+    if (!isNaN(saved)) state.totalScore = saved;
+  } catch(e){}
+  document.getElementById('totalScoreDisplay').textContent = state.totalScore;
+}
+</script>
+
+<!-- LogBook chrome -->
+<script>var LB_ACTIVE = 'orebro-buss-quiz';</script>
+<script src="logbook_chrome.js"></script>
+</body>
+</html>

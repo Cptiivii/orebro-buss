@@ -1,0 +1,2634 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Örebro Stadsbussar — Chaufförsguide</title>
+  <script>(function(){var t=localStorage.getItem('lb-theme');if(t==='light'&&window.innerWidth>700)document.documentElement.setAttribute('data-theme','light');})()</script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    /* ── Line brand colors ── */
+    :root {
+      --l1:#e74c3c; --l2:#27ae60; --l3:#2980b9;
+      --l4:#e67e22; --l5:#8e44ad; --l6:#16a085; --l7:#d35400;
+    }
+
+    /* ── Tabs ── */
+    .bs-tabs { display:flex; gap:3px; flex-wrap:wrap; margin-bottom:20px; }
+    .bs-tab {
+      padding:7px 14px; border-radius:5px 5px 0 0;
+      background:var(--panel); border:1px solid var(--border); border-bottom:none;
+      color:var(--muted); font-size:13px; font-weight:600; cursor:pointer;
+      transition:all .15s; white-space:nowrap;
+    }
+    .bs-tab:hover { color:var(--text); }
+    .bs-tab.active { color:#fff; }
+    .bs-tab[data-line="0"].active { background:rgba(0,212,255,.15); border-color:rgba(0,212,255,.4); color:var(--cyan); }
+    .bs-tab[data-line="1"].active { background:rgba(231,76,60,.2);  border-color:var(--l1); }
+    .bs-tab[data-line="2"].active { background:rgba(39,174,96,.2);  border-color:var(--l2); }
+    .bs-tab[data-line="3"].active { background:rgba(41,128,185,.2); border-color:var(--l3); }
+    .bs-tab[data-line="4"].active { background:rgba(230,126,34,.2); border-color:var(--l4); }
+    .bs-tab[data-line="5"].active { background:rgba(142,68,173,.2); border-color:var(--l5); }
+    .bs-tab[data-line="6"].active { background:rgba(22,160,133,.2); border-color:var(--l6); }
+    .bs-tab[data-line="7"].active { background:rgba(211,84,0,.2);   border-color:var(--l7); }
+    .bs-tab[data-line="9"].active { background:rgba(255,170,0,.15); border-color:#ffa700; color:#ffa700; }
+    .bs-panel { display:none; padding-bottom:32px; }
+    .bs-panel.active { display:block; }
+
+    /* ── Page header ── */
+    .pg-hdr { display:flex; align-items:flex-start; gap:16px; margin-bottom:20px; }
+    .pg-icon {
+      width:52px; height:52px; border-radius:50%;
+      background:rgba(0,212,255,.08); border:1px solid rgba(0,212,255,.2);
+      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    }
+    .pg-h1 { font-size:22px; font-weight:700; color:var(--text); }
+    .pg-sub { font-size:13px; color:var(--muted); margin-top:3px; }
+
+    /* ── Line badge ── */
+    .line-badge {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:36px; height:36px; border-radius:50%; font-size:16px;
+      font-weight:800; color:#fff; flex-shrink:0;
+    }
+
+    /* ── Route header ── */
+    .route-hdr {
+      display:flex; align-items:center; gap:14px;
+      padding:14px 18px; border-radius:8px; margin-bottom:16px;
+      border:1px solid var(--border);
+    }
+    .route-title { font-size:18px; font-weight:700; color:var(--text); }
+    .route-sub   { font-size:13px; color:var(--muted); margin-top:2px; }
+
+    /* ── Map ── */
+    .map-wrap { border-radius:8px; overflow:hidden; border:1px solid var(--border); margin-bottom:16px; position:relative; }
+    .leaflet-map { height:520px; width:100%; background:#0a1628; }
+
+    /* ── Nav overlay ── */
+    .nav-card { display:none; position:absolute; bottom:12px; left:12px; right:54px; z-index:1000;
+      background:rgba(4,12,26,0.96); border:1px solid rgba(0,212,255,0.35); border-radius:10px;
+      padding:14px 16px; backdrop-filter:blur(6px); box-shadow:0 4px 24px rgba(0,0,0,0.6); }
+    .nav-card.active { display:block; }
+    .nav-line-badge { display:inline-block; width:22px; height:22px; border-radius:50%; text-align:center;
+      line-height:22px; font-size:12px; font-weight:700; color:#fff; margin-right:8px; vertical-align:middle; }
+    .nav-counter { font-size:11px; color:var(--cyan); font-weight:600; letter-spacing:.05em; margin-bottom:4px; }
+    .nav-stop-name { font-size:18px; font-weight:700; color:#fff; margin-bottom:2px; line-height:1.2; }
+    .nav-next { font-size:12px; color:rgba(200,220,255,0.65); margin-bottom:10px; }
+    .nav-next span { color:rgba(200,220,255,0.9); }
+    .nav-controls { display:flex; gap:8px; align-items:center; }
+    .nav-btn { background:rgba(0,212,255,0.12); border:1px solid rgba(0,212,255,0.3); color:var(--cyan);
+      border-radius:6px; padding:6px 16px; font-size:13px; cursor:pointer; font-weight:600; }
+    .nav-btn:hover { background:rgba(0,212,255,0.22); }
+    .nav-btn.exit { background:rgba(255,80,80,0.12); border-color:rgba(255,80,80,0.3); color:#ff6b6b; margin-left:auto; }
+    .nav-progress { flex:1; height:3px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden; }
+    .nav-progress-fill { height:100%; background:var(--cyan); transition:width .3s; }
+
+    /* ── Alert overlay ── */
+    .alert-banner { display:none; background:rgba(231,76,60,0.12); border:1px solid rgba(231,76,60,0.4);
+      border-radius:6px; padding:8px 12px; margin-bottom:10px; font-size:12px; color:#e74c3c; }
+    .alert-banner.active { display:block; }
+    .alert-item { margin-bottom:4px; padding-left:14px; position:relative; }
+    .alert-item::before { content:'⚠'; position:absolute; left:0; }
+
+    /* ── Study mode overlay ── */
+    #study-overlay { display:none; flex-direction:column; height:calc(100vh - 120px); min-height:580px;
+      background:var(--bg); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+    #study-header { display:flex; align-items:center; gap:12px; padding:10px 16px;
+      border-bottom:1px solid var(--border); flex-shrink:0; background:rgba(0,0,0,0.2); }
+    #study-back-btn { background:none; border:1px solid var(--border); color:var(--text);
+      border-radius:5px; padding:5px 12px; cursor:pointer; font-size:13px; }
+    #study-back-btn:hover { border-color:var(--cyan); color:var(--cyan); }
+    #study-line-info { font-size:13px; font-weight:600; color:var(--text); flex:1; min-width:0; }
+    #study-counter { font-size:12px; color:var(--cyan); font-weight:700; flex-shrink:0; }
+
+    /* ── Top section: satellite + info panel ── */
+    #study-top { display:flex; height:230px; flex-shrink:0; border-bottom:2px solid var(--border); overflow:hidden; }
+    #study-sat-wrap { flex:1.65; position:relative; overflow:hidden; background:#06101e; min-width:0; }
+    #study-sat-img { width:100%; height:100%; object-fit:cover; display:block; transition:opacity .25s; }
+    #study-sat-fade { position:absolute; inset:0; background:linear-gradient(to right,transparent 70%,rgba(6,16,30,.7)); pointer-events:none; }
+    #study-sat-sv-link { position:absolute; bottom:8px; right:10px; font-size:10px; color:rgba(255,255,255,.65);
+      text-decoration:none; background:rgba(0,0,0,.55); padding:3px 8px; border-radius:3px;
+      border:1px solid rgba(255,255,255,.18); transition:all .15s; z-index:2; }
+    #study-sat-sv-link:hover { color:#fff; background:rgba(0,0,0,.82); }
+
+    #study-info-panel { flex:1; display:flex; flex-direction:column; gap:9px; padding:14px 16px; overflow-y:auto;
+      min-width:0; background:rgba(2,8,18,0.65); border-left:1px solid var(--border); }
+    #sip-name { font-size:18px; font-weight:800; color:#fff; line-height:1.15; }
+    #sip-badges { display:flex; gap:5px; flex-wrap:wrap; min-height:20px; }
+    .sip-badge { font-size:9px; font-weight:800; letter-spacing:.07em; padding:3px 7px; border-radius:3px; }
+    .sip-badge.tp    { background:rgba(255,183,0,.18); color:#ffb700; border:1px solid rgba(255,183,0,.4); }
+    .sip-badge.alert { background:rgba(231,76,60,.18); color:#ff5555; border:1px solid rgba(231,76,60,.4); }
+    .sip-badge.brt   { background:rgba(0,212,255,.12); color:var(--cyan); border:1px solid rgba(0,212,255,.3); }
+    #sip-timing { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+    .sip-tbox { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:5px; padding:6px 9px; }
+    .sip-tdir { font-size:9px; font-weight:700; letter-spacing:.09em; color:var(--muted); margin-bottom:2px; }
+    .sip-tstop { font-size:12px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .sip-tmin { font-size:10px; color:var(--cyan); margin-top:2px; }
+    #sip-door { font-size:11px; padding:5px 9px; border-radius:4px; font-weight:600; }
+    #sip-door.alla  { background:rgba(0,212,255,.08); border:1px solid rgba(0,212,255,.25); color:rgba(0,212,255,.9); }
+    #sip-door.fram  { background:rgba(255,183,0,.06); border:1px solid rgba(255,183,0,.2); color:rgba(255,220,120,.85); }
+    #sip-door.regler{ background:rgba(255,183,0,.14); border:1px solid rgba(255,183,0,.45); color:#ffb700; }
+    #sip-notes { font-size:11px; color:var(--muted); line-height:1.55; }
+    #sip-peak { font-size:11px; padding:5px 9px; border-radius:4px; font-weight:600; display:none; }
+    #sip-peak.rush  { background:rgba(231,76,60,.16); border:1px solid rgba(231,76,60,.4); color:#ff6655; display:block; }
+    #sip-peak.busy  { background:rgba(255,167,0,.12); border:1px solid rgba(255,167,0,.3); color:#ffa700; display:block; }
+    #sip-peak.quiet { background:rgba(39,174,96,.1);  border:1px solid rgba(39,174,96,.25); color:#27ae60; display:block; }
+    #sip-cumtime { font-size:10px; color:rgba(0,212,255,.55); margin-top:2px; }
+
+    /* ── Nav bar ── */
+    #study-nav-bar { display:flex; align-items:center; gap:10px; padding:8px 14px;
+      border-bottom:1px solid var(--border); flex-shrink:0; background:rgba(0,0,0,.28); }
+    .study-nav-btn { background:rgba(0,212,255,.08); border:1px solid rgba(0,212,255,.25);
+      color:var(--cyan); border-radius:5px; padding:5px 14px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap; }
+    .study-nav-btn:hover:not(:disabled) { background:rgba(0,212,255,.2); }
+    .study-nav-btn:disabled { opacity:0.25; cursor:default; }
+    #study-progress-wrap { width:80px; flex-shrink:0; height:4px; background:rgba(255,255,255,.1); border-radius:2px; overflow:hidden; }
+    #study-progress-fill { height:100%; background:var(--cyan); transition:width .25s; width:0%; }
+    #study-stop-num { font-size:11px; color:var(--muted); min-width:56px; text-align:center; }
+
+    /* ── Map (fills remaining height) ── */
+    #study-map-wrap { flex:1; position:relative; min-height:0; min-width:0; }
+    #study-map { position:absolute; inset:0; width:100%; height:100%; }
+
+    /* ── Study open button ── */
+    .study-open-btn { font-size:11px; padding:3px 10px; background:rgba(0,212,255,0.08);
+      border:1px solid rgba(0,212,255,0.25); color:var(--cyan); border-radius:4px; cursor:pointer;
+      font-weight:600; white-space:nowrap; }
+    .study-open-btn:hover { background:rgba(0,212,255,0.18); }
+
+    /* ── Alert modal ── */
+    #alert-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:9000;
+      align-items:center; justify-content:center; }
+    #alert-modal.open { display:flex; }
+    #alert-modal-box { background:var(--panel); border:1px solid rgba(231,76,60,.5); border-radius:10px;
+      max-width:520px; width:90%; padding:24px; box-shadow:0 8px 40px rgba(0,0,0,.6); }
+    #alert-modal-title { font-size:13px; font-weight:800; color:#ff5555; letter-spacing:.08em;
+      text-transform:uppercase; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+    #alert-modal-body { font-size:13px; color:var(--text); line-height:1.7; margin-bottom:16px; }
+    #alert-modal-footer { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+    #alert-modal-link { font-size:12px; color:var(--cyan); text-decoration:none; }
+    #alert-modal-link:hover { text-decoration:underline; }
+    #alert-modal-close { background:none; border:1px solid var(--border); color:var(--muted);
+      border-radius:5px; padding:5px 16px; cursor:pointer; font-size:12px; }
+    #alert-modal-close:hover { border-color:var(--cyan); color:var(--cyan); }
+    .alert { cursor:pointer; transition:background .15s; }
+    .alert:hover { background:rgba(255,167,0,.1); }
+
+    @media(max-width:700px){
+      #study-top { flex-direction:column; height:auto; }
+      #study-sat-wrap { height:130px; flex:none; }
+      #study-info-panel { max-height:160px; }
+      #sip-timing { grid-template-columns:1fr; }
+      #study-nav-stops { gap:6px; }
+    }
+    @media(max-width:480px){
+      #study-sat-wrap { height:110px; }
+      #study-info-panel { max-height:140px; }
+    }
+    .lb-map-tooltip { background:rgba(5,15,30,0.92)!important; border:1px solid rgba(0,212,255,0.3)!important; color:#e8f4ff!important; font-size:12px!important; font-family:Inter,sans-serif!important; padding:3px 8px!important; border-radius:4px!important; }
+    .lb-map-popup .leaflet-popup-content-wrapper { background:rgba(250,252,255,0.97); border-radius:6px; box-shadow:0 4px 16px rgba(0,0,0,0.18); padding:16px 0 0 0; }
+    .lb-map-popup .leaflet-popup-content { margin:0 14px 10px; }
+    .lb-map-popup .leaflet-popup-tip { background:rgba(250,252,255,0.97); }
+    .lb-map-popup-tp .leaflet-popup-content-wrapper { border:4px solid #ffb700; box-shadow:0 4px 24px rgba(255,183,0,0.45), 0 0 0 1px rgba(255,183,0,0.25); }
+
+    /* ── Stops layout ── */
+    .stops-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
+    @media(max-width:700px){ .stops-grid { grid-template-columns:1fr; } }
+    .stops-col { background:var(--panel); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+    .stops-col-hdr {
+      padding:8px 14px; font-size:11px; font-weight:700;
+      letter-spacing:.1em; text-transform:uppercase; color:#fff;
+    }
+    .stop-item {
+      display:flex; align-items:center; gap:10px;
+      padding:6px 14px; border-bottom:1px solid var(--border); font-size:13px;
+      cursor:pointer; transition:background .12s;
+    }
+    .stop-item:hover { background:rgba(0,212,255,.06); }
+    .stop-item:last-child { border-bottom:none; }
+
+    /* ── Study nav stop names ── */
+    #study-nav-stops { display:flex; align-items:center; gap:0; flex:1; min-width:0; overflow:hidden; }
+    #snav-prev { font-size:11px; color:var(--muted); flex:1; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:8px; cursor:pointer; transition:color .12s; }
+    #snav-prev:hover { color:var(--cyan); }
+    #snav-cur  { font-size:12px; font-weight:800; color:#fff; white-space:nowrap; padding:3px 10px; background:rgba(255,255,255,.07); border-radius:4px; border:1px solid rgba(255,255,255,.14); max-width:45%; overflow:hidden; text-overflow:ellipsis; }
+    #snav-next { font-size:11px; color:var(--muted); flex:1; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-left:8px; cursor:pointer; transition:color .12s; }
+    #snav-next:hover { color:var(--cyan); }
+    #study-standalone-btn { background:none; border:1px solid rgba(255,255,255,.15); color:rgba(255,255,255,.5); border-radius:4px; padding:3px 8px; cursor:pointer; font-size:11px; title:'Öppna i nytt fönster'; }
+    #study-standalone-btn:hover { border-color:var(--cyan); color:var(--cyan); }
+    .stop-num {
+      min-width:22px; height:22px; border-radius:50%;
+      background:rgba(0,0,0,.3); color:var(--muted);
+      display:flex; align-items:center; justify-content:center;
+      font-size:11px; font-weight:700; flex-shrink:0;
+    }
+    .stop-first .stop-num, .stop-last .stop-num { color:#fff; }
+    .stop-center .stop-num { color:var(--cyan); }
+    .stop-name { color:var(--text); }
+    .stop-note { font-size:11px; color:#ffa700; margin-left:4px; }
+
+    /* ── Direction toggle ── */
+    .dir-toggle-wrap { display:flex; gap:6px; margin-bottom:10px; }
+    .dir-btn { flex:1; padding:7px 10px; border-radius:6px; border:1px solid var(--border);
+      background:none; color:var(--muted); cursor:pointer; font-size:11px; font-weight:700;
+      letter-spacing:.04em; transition:all .18s; text-align:center; }
+    .dir-btn.active { border-color:var(--cyan); color:var(--cyan); background:rgba(0,212,255,.08); }
+    .dir-btn:hover:not(.active) { border-color:rgba(255,255,255,.3); color:var(--text); }
+
+    /* ── Study direction badge ── */
+    .study-dir-btns { display:flex; gap:6px; }
+    .study-dir-btn { padding:4px 10px; border-radius:5px; border:1px solid rgba(255,255,255,.18);
+      background:none; color:var(--muted); cursor:pointer; font-size:11px; font-weight:700;
+      letter-spacing:.05em; transition:all .15s; }
+    .study-dir-btn.active { border-color:var(--cyan); color:var(--cyan); background:rgba(0,212,255,.12); }
+    .study-dir-btn:hover:not(.active) { color:var(--text); border-color:rgba(255,255,255,.35); }
+
+    /* ── Info cards ── */
+    .card {
+      background:var(--panel); border:1px solid var(--border);
+      border-radius:8px; padding:14px 18px; margin-bottom:12px;
+    }
+    .card.l1 { border-left:3px solid var(--l1); }
+    .card.l2 { border-left:3px solid var(--l2); }
+    .card.l3 { border-left:3px solid var(--l3); }
+    .card.l4 { border-left:3px solid var(--l4); }
+    .card.l5 { border-left:3px solid var(--l5); }
+    .card.l6 { border-left:3px solid var(--l6); }
+    .card.l7 { border-left:3px solid var(--l7); }
+    .card.cyan  { border-left:3px solid var(--cyan); }
+    .card.amber { border-left:3px solid #ffa700; }
+    .card.green { border-left:3px solid #00dc78; }
+    .card.red   { border-left:3px solid #ff4444; }
+    .card-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.09em; margin-bottom:8px; }
+
+    /* ── Overview line cards ── */
+    .ov-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; margin-bottom:20px; }
+    .ov-card {
+      background:var(--panel); border:1px solid var(--border);
+      border-radius:8px; padding:14px; cursor:pointer; transition:all .15s;
+      display:flex; gap:12px; align-items:flex-start;
+    }
+    .ov-card:hover { border-color:rgba(0,212,255,.3); transform:translateY(-1px); }
+    .ov-info { flex:1; }
+    .ov-route { font-size:13px; font-weight:600; color:var(--text); }
+    .ov-stops { font-size:12px; color:var(--muted); margin-top:3px; }
+
+    /* ── Alert banner ── */
+    .alert {
+      display:flex; gap:10px; align-items:flex-start;
+      padding:10px 14px; border-radius:6px; margin-bottom:12px;
+      background:rgba(255,170,0,.08); border:1px solid rgba(255,170,0,.3);
+      font-size:13px; color:var(--text);
+    }
+    .alert-icon { flex-shrink:0; margin-top:1px; }
+    .alert strong { color:#ffa700; }
+
+    /* ── Lathund ── */
+    .sec-lbl {
+      font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+      color:var(--muted); margin:22px 0 10px; padding-bottom:5px;
+      border-bottom:1px solid var(--border);
+    }
+    #lath-filter { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 18px; }
+    .lath-fb {
+      font-size:10px; font-weight:800; letter-spacing:.1em; text-transform:uppercase;
+      padding:5px 13px; border-radius:3px; cursor:pointer; transition:all .15s;
+      background:transparent; border:1px solid rgba(0,212,255,.22);
+      color:rgba(0,212,255,.5);
+    }
+    .lath-fb:hover { border-color:rgba(0,212,255,.55); color:rgba(0,212,255,.85); }
+    .lath-fb.active {
+      background:rgba(0,212,255,.15); border-color:var(--cyan);
+      color:var(--cyan); box-shadow:0 0 8px rgba(0,212,255,.2);
+    }
+    .lath-fb[data-topic="skiftstart"].active { border-color:var(--cyan); color:var(--cyan); background:rgba(0,212,255,.12); }
+    .lath-fb[data-topic="biljetter"].active  { border-color:#00dc78; color:#00dc78; background:rgba(0,220,120,.1); }
+    .lath-fb[data-topic="regler"].active     { border-color:#e74c3c; color:#ff6655; background:rgba(231,76,60,.1); }
+    .lath-fb[data-topic="teknik"].active     { border-color:#b464ff; color:#b464ff; background:rgba(180,100,255,.1); }
+    .lath-fb[data-topic="drift"].active      { border-color:#ffa700; color:#ffa700; background:rgba(255,167,0,.1); }
+    .lath-fb[data-topic="referens"].active   { border-color:#16a085; color:#1abc9c; background:rgba(26,188,156,.1); }
+    .rule-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; margin-bottom:16px; }
+    .rule-card {
+      background:var(--panel); border:1px solid var(--border);
+      border-radius:8px; padding:14px 16px;
+    }
+    .rule-card h4 { font-size:13px; font-weight:700; color:var(--cyan); margin-bottom:8px; }
+    .rule-card ul { padding-left:16px; margin:0; }
+    .rule-card li { font-size:13px; color:var(--text); margin-bottom:5px; line-height:1.5; }
+    .rule-card li strong { color:#ffa700; }
+
+    /* ── Price table ── */
+    .dt { width:100%; border-collapse:collapse; font-size:13px; }
+    .dt th {
+      background:rgba(8,22,42,.82); color:#00d4ff;
+      padding:8px 12px; text-align:left; font-size:12px; font-weight:600;
+      white-space:nowrap; border-bottom:1px solid rgba(0,212,255,.2);
+    }
+    .dt td { padding:8px 12px; border-bottom:1px solid var(--border); color:var(--text); }
+    .dt tr:last-child td { border-bottom:none; }
+    .dt-wrap { overflow-x:auto; margin-bottom:14px; border-radius:8px; overflow:hidden; border:1px solid var(--border); }
+
+    /* ── Badge ── */
+    .badge {
+      display:inline-block; padding:2px 8px; border-radius:3px;
+      font-size:11px; font-weight:700; letter-spacing:.04em;
+    }
+    .badge-red    { background:rgba(255,60,60,.12);  color:#ff4444; border:1px solid rgba(255,60,60,.3); }
+    .badge-amber  { background:rgba(255,170,0,.12);  color:#ffa700; border:1px solid rgba(255,170,0,.3); }
+    .badge-green  { background:rgba(0,220,120,.12);  color:#00dc78; border:1px solid rgba(0,220,120,.25); }
+    .badge-cyan   { background:rgba(0,212,255,.1);   color:var(--cyan); border:1px solid rgba(0,212,255,.3); }
+
+    /* ── Divider ── */
+    .divider { height:1px; background:var(--border); margin:18px 0; }
+
+    /* ── Tools list ── */
+    .tool-list { list-style:none; padding:0; margin:0; }
+    .tool-list li {
+      display:flex; align-items:flex-start; gap:10px;
+      padding:9px 0; border-bottom:1px solid var(--border); font-size:13px;
+    }
+    .tool-list li:last-child { border-bottom:none; }
+    .tool-icon { flex-shrink:0; margin-top:1px; }
+    .tool-name { font-weight:600; color:var(--text); }
+    .tool-desc { color:var(--muted); font-size:12px; margin-top:1px; }
+
+    /* ── Print ── */
+    @media print {
+      .bs-tabs, .bridge, .right-sidebar, .horizon, .lb-print-btn { display:none !important; }
+      .bs-panel { display:block !important; }
+      .leaflet-map { height:260px !important; }
+    }
+
+    /* ── Responsive ── */
+    @media(max-width:700px){
+      .stops-col-hdr { font-size:10px; }
+      .ov-grid { grid-template-columns:1fr; }
+      .rule-grid { grid-template-columns:1fr; }
+      .bs-tabs { overflow-x:auto; flex-wrap:nowrap; -webkit-overflow-scrolling:touch;
+        scrollbar-width:none; padding-bottom:4px; }
+      .bs-tabs::-webkit-scrollbar { display:none; }
+      .pg-icon { width:40px; height:40px; }
+      .pg-h1 { font-size:18px; }
+      .route-title { font-size:15px; }
+      .route-hdr { flex-wrap:wrap; gap:10px; }
+      .route-hdr > .badge { order:10; width:100%; margin-left:0 !important; }
+      #study-overlay { min-height:auto; }
+      .leaflet-map { height:260px; }
+    }
+    @media(max-width:420px){
+      .pg-h1 { font-size:16px; }
+      .pg-icon { display:none; }
+      #snav-prev, #snav-next { max-width:80px; overflow:hidden; text-overflow:ellipsis; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Page content ─────────────────────────────────────────── -->
+<div class="page-content">
+
+  <!-- Header -->
+  <div class="pg-hdr">
+    <div class="pg-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="1.5" width="26" height="26">
+        <rect x="1" y="5" width="18" height="13" rx="2.5"/>
+        <path d="M19 9h3v5h-3"/>
+        <circle cx="5.5" cy="18.5" r="2" fill="var(--cyan)" stroke="none" opacity=".8"/>
+        <circle cx="14.5" cy="18.5" r="2" fill="var(--cyan)" stroke="none" opacity=".8"/>
+        <line x1="3" y1="9" x2="17" y2="9" stroke-linecap="round" opacity=".4"/>
+        <line x1="8" y1="5" x2="8" y2="9" opacity=".4"/>
+        <line x1="12" y1="5" x2="12" y2="9" opacity=".4"/>
+      </svg>
+    </div>
+    <div>
+      <div class="pg-h1">Örebro Stadsbussar — Chaufförsguide</div>
+      <div class="pg-sub">Linjerna 1–7 · Svealandstrafiken · Källa: Länstrafiken Örebro / Samtrafiken (Trafiklab) · Uppdaterad 2026-09-26</div>
+      <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
+        <a href="orebro_busslanding.html" style="font-size:11px;color:var(--cyan);text-decoration:none;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);padding:3px 10px;border-radius:4px" target="_blank">↗ Chaufförsportal (extern)</a>
+        <a href="orebro_studera.html" style="font-size:11px;color:#27ae60;text-decoration:none;background:rgba(39,174,96,.08);border:1px solid rgba(39,174,96,.2);padding:3px 10px;border-radius:4px" target="_blank">▶ Studera rutten</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alert: aktiva driftstörningar -->
+  <div class="alert" onclick="openAlertModal(this)" title="Klicka för mer info"
+    data-title="Pågående störningar sep 2026 – sommaren 2027"
+    data-detail="&lt;strong&gt;Linje 1 &amp; 3 — VA-arbeten centrala Örebro&lt;/strong&gt;&lt;br&gt;&lt;br&gt;• &lt;strong&gt;Tegnérlunden&lt;/strong&gt;: Stängd. Provisorisk hållplats &lt;strong&gt;Tegnérgatan&lt;/strong&gt; ca 80 m österut (linje 1).&lt;br&gt;• &lt;strong&gt;Baronbackarna&lt;/strong&gt;: Tillfälligt förflyttad ~100 m norrut (linje 1 &amp; 3).&lt;br&gt;&lt;br&gt;Period: 20 september 2026 – sommaren 2027.&lt;br&gt;&lt;br&gt;Kontrollera alltid Svealandstrafikens förarportal före avgång för senaste läge.">
+    <div class="alert-icon">
+      <svg viewBox="0 0 16 16" fill="none" stroke="#ffa700" stroke-width="1.4" width="16" height="16">
+        <polygon points="8,2 14,13 2,13" opacity=".7"/>
+        <line x1="8" y1="6" x2="8" y2="9.5" stroke-linecap="round"/>
+        <circle cx="8" cy="11.2" r=".8" fill="#ffa700" stroke="none"/>
+      </svg>
+    </div>
+    <div>
+      <strong>Pågående störningar (sep 2026 – sommaren 2027):</strong>
+      Linje 1 — hållplats <strong>Tegnérlunden</strong> tillfälligt stängd (VA-arbeten). Använd provisorisk hållplats <strong>Tegnérgatan</strong>.
+      Hållplats <strong>Baronbackarna</strong> tillfälligt förflyttad ~100 m norrut. Gäller även linje 3.
+      <span style="font-size:10px;color:rgba(255,167,0,.6);margin-left:6px">▸ Klicka för detaljer</span>
+    </div>
+  </div>
+
+  <!-- Tab nav -->
+  <div class="bs-tabs">
+    <div class="bs-tab active" data-line="0" onclick="showTab(0)">Översikt</div>
+    <div class="bs-tab" data-line="1" onclick="showTab(1)">Linje 1</div>
+    <div class="bs-tab" data-line="2" onclick="showTab(2)">Linje 2</div>
+    <div class="bs-tab" data-line="3" onclick="showTab(3)">Linje 3</div>
+    <div class="bs-tab" data-line="4" onclick="showTab(4)">Linje 4</div>
+    <div class="bs-tab" data-line="5" onclick="showTab(5)">Linje 5</div>
+    <div class="bs-tab" data-line="6" onclick="showTab(6)">Linje 6</div>
+    <div class="bs-tab" data-line="7" onclick="showTab(7)">Linje 7</div>
+    <div class="bs-tab" data-line="9" onclick="showTab(9)">Lathund &amp; Regler</div>
+  </div>
+
+  <!-- ════════════════════════════════════ ÖVERSIKT ════════════════════════════════════ -->
+  <div class="bs-panel active" id="panel-0">
+
+    <div class="sec-lbl" style="display:flex;align-items:center;justify-content:space-between;">
+      <span>Linjenät — Central Örebro</span>
+      <button id="btn-update-shapes" onclick="updateShapes()" style="font-size:12px;padding:4px 12px;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.3);color:var(--cyan);border-radius:4px;cursor:pointer;">Uppdatera rutter</button>
+    </div>
+    <div id="shapes-status" style="font-size:12px;color:var(--text-dim);margin-bottom:6px;display:none;"></div>
+    <div class="map-wrap">
+      <div id="map-overview" class="leaflet-map"></div>
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:14px;align-items:center">
+      <span style="display:flex;align-items:center;gap:5px">
+        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.5);border:1.5px solid rgba(255,255,255,0.7)"></span> Hållplats
+      </span>
+      <span style="display:flex;align-items:center;gap:5px">
+        <span style="display:inline-block;width:11px;height:11px;background:#ffb700;border:2px solid rgba(255,255,255,0.9);transform:rotate(45deg);font-size:8px;font-weight:900;line-height:11px;text-align:center;color:#000">R</span> Reglerhållplats
+      </span>
+      <span style="display:flex;align-items:center;gap:5px">
+        <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#00d4ff;border:2px solid rgba(255,255,255,0.8)"></span> Knutpunkt
+      </span>
+      <span style="display:flex;align-items:center;gap:5px">
+        <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#e74c3c;border:2px solid rgba(255,255,255,0.8)"></span> Störning
+      </span>
+      <span style="display:flex;align-items:center;gap:5px">
+        <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#9b59b6;border:1.5px solid rgba(255,255,255,0.8);text-align:center;font-size:9px;line-height:14px">🏭</span> Depå
+      </span>
+      <span style="display:flex;align-items:center;gap:5px">
+        <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#16a085;border:1.5px solid rgba(255,255,255,0.8);text-align:center;font-size:9px;line-height:14px">☕</span> Personalvila
+      </span>
+    </div>
+
+    <div class="sec-lbl">Alla linjer</div>
+    <div class="ov-grid">
+      <div class="ov-card" onclick="showTab(1)">
+        <div class="line-badge" style="background:var(--l1)">1</div>
+        <div class="ov-info">
+          <div class="ov-route">Vivalla — Resecentrum — Brickebacken</div>
+          <div class="ov-stops">18 hållplatser · Citylinjen BRT · Tätaste trafik</div>
+        </div>
+      </div>
+      <div class="ov-card" onclick="showTab(2)">
+        <div class="line-badge" style="background:var(--l2)">2</div>
+        <div class="ov-info">
+          <div class="ov-route">Mellringe — Resecentrum — Universitetet</div>
+          <div class="ov-stops">17 hållplatser · Citylinjen BRT · Varberga / Markbacken</div>
+        </div>
+      </div>
+      <div class="ov-card" onclick="showTab(3)">
+        <div class="line-badge" style="background:var(--l3)">3</div>
+        <div class="ov-info">
+          <div class="ov-route">Lundby — Resecentrum — Solhaga</div>
+          <div class="ov-stops">19 hållplatser · Via Vivalla och Rosta</div>
+        </div>
+      </div>
+      <div class="ov-card" onclick="showTab(4)">
+        <div class="line-badge" style="background:var(--l4)">4</div>
+        <div class="ov-info">
+          <div class="ov-route">Rynningeåsen — Resecentrum — Marieberg</div>
+          <div class="ov-stops">20 hållplatser · Via USÖ sjukhus (M-huset)</div>
+        </div>
+      </div>
+      <div class="ov-card" onclick="showTab(5)">
+        <div class="line-badge" style="background:var(--l5)">5</div>
+        <div class="ov-info">
+          <div class="ov-route">Hovsta — Resecentrum — Tybble</div>
+          <div class="ov-stops">29 hållplatser · Via Lillåns Center och Svampen</div>
+        </div>
+      </div>
+      <div class="ov-card" onclick="showTab(6)">
+        <div class="line-badge" style="background:var(--l6)">6</div>
+        <div class="ov-info">
+          <div class="ov-route">Björkhaga — Resecentrum — Universitetet</div>
+          <div class="ov-stops">26 hållplatser · Via USÖ akuten och Haga centrum</div>
+        </div>
+      </div>
+      <div class="ov-card" onclick="showTab(7)">
+        <div class="line-badge" style="background:var(--l7)">7</div>
+        <div class="ov-info">
+          <div class="ov-route">Lillån — Resecentrum — Mosås</div>
+          <div class="ov-stops">42 hållplatser · Via Pettersberg och Adolfsberg</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-lbl">Citylinjen — Viktigt för chaufför</div>
+    <div class="card cyan">
+      <div class="card-title" style="color:var(--cyan)">Vad är Citylinjen?</div>
+      <p style="font-size:13px;color:var(--text);margin:0 0 8px">Linjerna 1 och 2 ingår i <strong>Citylinjen</strong> — Örebros BRT-system (Bus Rapid Transit) som invigdes december 2024. Systemet har:</p>
+      <ul style="font-size:13px;color:var(--text);padding-left:16px;margin:0">
+        <li>Dedikerade busskörfält i centrala Örebro</li>
+        <li>Flerdörrspåstigning (alla dörrar öppnas)</li>
+        <li>Plattformshållplatser med separat biljettvalidering <em>före</em> påstigning</li>
+        <li>Ökad turtäthet: 10 min högtrafik, 15 min lågtrafik</li>
+        <li>Prioriteringssignaler vid trafikljus</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════ LINJE 1 ════════════════════════════════════ -->
+  <div class="bs-panel" id="panel-1">
+    <div class="route-hdr" style="background:rgba(231,76,60,.06);border-color:rgba(231,76,60,.3)">
+      <div class="line-badge" style="background:var(--l1)">1</div>
+      <div>
+        <div class="route-title">Vivalla centrum → Brickebacken centrum</div>
+        <div class="route-sub">18 hållplatser · ~36 min · Citylinjen BRT · Turtäthet 10–15 min</div>
+      </div>
+      <span class="badge badge-red" style="margin-left:auto">CITYLINJEN</span>
+    </div>
+
+    <div class="alert" onclick="openAlertModal(this)" title="Klicka för mer info"
+      data-title="VA-arbeten — Linje 1 &amp; 2"
+      data-detail="&lt;strong&gt;Tegnérlunden&lt;/strong&gt; är stängd under perioden sep 2026–sommaren 2027 på grund av VA-arbeten.&lt;br&gt;&lt;br&gt;• Kör via provisorisk hållplats &lt;strong&gt;Tegnérgatan&lt;/strong&gt; (ca 80 m österut).&lt;br&gt;• &lt;strong&gt;Baronbackarna&lt;/strong&gt; är tillfälligt förflyttad ~100 m norrut.&lt;br&gt;&lt;br&gt;Kontrollera alltid Svealandstrafikens förarportal för senaste uppdatering.">
+      <div class="alert-icon"><svg viewBox="0 0 16 16" fill="none" stroke="#ffa700" stroke-width="1.4" width="14" height="14"><polygon points="8,2 14,13 2,13" opacity=".7"/><line x1="8" y1="6" x2="8" y2="9.5" stroke-linecap="round"/><circle cx="8" cy="11.2" r=".8" fill="#ffa700" stroke="none"/></svg></div>
+      <div>VA-arbeten: <strong>Tegnérlunden</strong> stängd (sep 2026–sommaren 2027). Kör via provisorisk hållplats <strong>Tegnérgatan</strong>. <strong>Baronbackarna</strong> tillfälligt ~100 m norrut. <span style="font-size:10px;color:rgba(255,167,0,.6);margin-left:6px">▸ Klicka för detaljer</span></div>
+    </div>
+
+    <div class="map-wrap">
+      <div id="map-1" class="leaflet-map"></div>
+    </div>
+
+    <div class="stops-grid">
+      <div class="stops-col">
+        <div class="stops-col-hdr" style="background:var(--l1)">→ Riktning: Vivalla → Brickebacken</div>
+        <div class="stop-item stop-first"><div class="stop-num" style="background:var(--l1)">1</div><span class="stop-name">Vivalla centrum</span></div>
+        <div class="stop-item"><div class="stop-num">2</div><span class="stop-name">Poesigatan</span></div>
+        <div class="stop-item"><div class="stop-num">3</div><span class="stop-name">Boglundsängen</span></div>
+        <div class="stop-item"><div class="stop-num">4</div><span class="stop-name">Baronbackarna</span><span class="stop-note">⚠ tillfälligt förflyttad</span></div>
+        <div class="stop-item"><div class="stop-num">5</div><span class="stop-name">Lövstagatan</span></div>
+        <div class="stop-item"><div class="stop-num">6</div><span class="stop-name">Tegnérlunden</span><span class="stop-note">⚠ stängd → Tegnérgatan</span></div>
+        <div class="stop-item stop-center"><div class="stop-num" style="background:rgba(0,212,255,.15);color:var(--cyan)">7</div><span class="stop-name"><strong>Örebro Resecentrum</strong></span></div>
+        <div class="stop-item"><div class="stop-num">8</div><span class="stop-name">Kulturkvarteret</span></div>
+        <div class="stop-item"><div class="stop-num">9</div><span class="stop-name">Våghustorget</span></div>
+        <div class="stop-item"><div class="stop-num">10</div><span class="stop-name">Eyra Idrottsområde</span></div>
+        <div class="stop-item"><div class="stop-num">11</div><span class="stop-name">Österplan</span></div>
+        <div class="stop-item"><div class="stop-num">12</div><span class="stop-name">Almbyplan</span></div>
+        <div class="stop-item"><div class="stop-num">13</div><span class="stop-name">Tybble centrum</span></div>
+        <div class="stop-item"><div class="stop-num">14</div><span class="stop-name">Universitetsplatsen</span></div>
+        <div class="stop-item"><div class="stop-num">15</div><span class="stop-name">Barkvägen</span></div>
+        <div class="stop-item"><div class="stop-num">16</div><span class="stop-name">Björkrisvägen</span></div>
+        <div class="stop-item"><div class="stop-num">17</div><span class="stop-name">Brickebacken centrum</span></div>
+        <div class="stop-item stop-last"><div class="stop-num" style="background:var(--l1)">18</div><span class="stop-name">Tallrisvägen</span></div>
+      </div>
+      <div class="stops-col">
+        <div class="stops-col-hdr" style="background:rgba(150,30,20,.8)">← Riktning: Brickebacken → Vivalla</div>
+        <div class="card" style="border:none;background:transparent;padding:14px">
+          <p style="font-size:13px;color:var(--muted);margin:0">Returresan kör samma sträcka i omvänd ordning: Tallrisvägen → Brickebacken centrum → ... → Vivalla centrum.</p>
+          <div class="divider"></div>
+          <div class="card-title" style="color:var(--l1)">Viktiga hållplatser</div>
+          <ul style="font-size:13px;color:var(--text);padding-left:16px;margin:0">
+            <li><strong>Örebro Resecentrum</strong> — Bytespunkt för alla linjer + tåg</li>
+            <li><strong>Tybble centrum</strong> — Stort bostadsområde, hög stigning</li>
+            <li><strong>Universitetsplatsen</strong> — Örebro Universitet, studenter</li>
+            <li><strong>Vivalla centrum</strong> — Tätbefolkat, hög frekvens morgon/kväll</li>
+          </ul>
+          <div class="divider"></div>
+          <div class="card-title" style="color:var(--l1)">Chaufförstips — Linje 1</div>
+          <ul style="font-size:13px;color:var(--text);padding-left:16px;margin:0">
+            <li>Citylinjen: alla dörrar öppnas vid BRT-hållplatser i centrum</li>
+            <li>Passagerare validerar biljett vid hållplatsen, ej ombord</li>
+            <li>Håll turtätheten — 10 min är minimigranskning vid rapport</li>
+            <li>Trafiktäthet: toppbelastning 07–09 och 15–18</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════ LINJE 2 ════════════════════════════════════ -->
+  <div class="bs-panel" id="panel-2">
+    <div class="route-hdr" style="background:rgba(39,174,96,.06);border-color:rgba(39,174,96,.3)">
+      <div class="line-badge" style="background:var(--l2)">2</div>
+      <div>
+        <div class="route-title">Mellringe — Resecentrum — Universitetsplatsen</div>
+        <div class="route-sub">17 hållplatser · Citylinjen BRT · Via Varberga och Markbacken</div>
+      </div>
+      <span class="badge badge-green" style="margin-left:auto">CITYLINJEN</span>
+    </div>
+
+    <div class="map-wrap">
+      <div id="map-2" class="leaflet-map"></div>
+    </div>
+
+    <div class="stops-grid">
+      <div class="stops-col">
+        <div class="stops-col-hdr" style="background:var(--l2)">→ Riktning: Mellringe → Universitetet</div>
+        <div class="stop-item stop-first"><div class="stop-num" style="background:var(--l2)">1</div><span class="stop-name">Mellringestaden</span></div>
+        <div class="stop-item"><div class="stop-num">2</div><span class="stop-name">Mellringevägen</span></div>
+        <div class="stop-item"><div class="stop-num">3</div><span class="stop-name">Trollbärsgatan</span></div>
+        <div class="stop-item"><div class="stop-num">4</div><span class="stop-name">Varberga västra</span></div>
+        <div class="stop-item"><div class="stop-num">5</div><span class="stop-name">Varberga torg</span></div>
+        <div class="stop-item"><div class="stop-num">6</div><span class="stop-name">Apelvägen</span></div>
+        <div class="stop-item"><div class="stop-num">7</div><span class="stop-name">Markbackens centrum</span></div>
+        <div class="stop-item"><div class="stop-num">8</div><span class="stop-name">Västerplan</span></div>
+        <div class="stop-item stop-center"><div class="stop-num" style="background:rgba(0,212,255,.15);color:var(--cyan)">9</div><span class="stop-name"><strong>Örebro Resecentrum</strong></span></div>
+        <div class="stop-item"><div class="stop-num">10</div><span class="stop-name">Tegnérlunden</span></div>
+        <div class="stop-item"><div class="stop-num">11</div><span class="stop-name">Österplan</span></div>
+        <div class="stop-item"><div class="stop-num">12</div><span class="stop-name">Eyra Idrottsområde</span></div>
+        <div class="stop-item"><div class="stop-num">13</div><span class="stop-name">Våghustorget</span></div>
+        <div class="stop-item"><div class="stop-num">14</div><span class="stop-name">Kulturkvarteret</span></div>
+        <div class="stop-item"><div class="stop-num">15</div><span class="stop-name">Almbyplan</span></div>
+        <div class="stop-item"><div class="stop-num">16</div><span class="stop-name">Tybble centrum</span></div>
+        <div class="stop-item stop-last"><div class="stop-num" style="background:var(--l2)">17</div><span class="stop-name">Universitetsplatsen</span></div>
+      </div>
+      <div class="stops-col">
+        <div class="stops-col-hdr" style="background:rgba(20,100,60,.8)">← Riktning: Universitetet → Mellringe</div>
+        <div style="padding:14px">
+          <div class="card-title" style="color:var(--l2)">Viktiga hållplatser</div>
+          <ul style="font-size:13px;color:var(--text);padding-left:16px;margin:0 0 12px">
+            <li><strong>Mellringestaden</strong> — Nytt bostadsområde, växande</li>
+            <li><strong>Varberga torg</strong> — Lokalt centrum för Varberga</li>
+            <li><strong>Markbackens centrum</strong> — Servicepunkt västerut</li>
+            <li><strong>Örebro Resecentrum</strong> — Central bytespunkt</li>
+            <li><strong>Universitetsplatsen</strong> — Örebro Universitet</li>
+          </ul>
+          <div class="card-title" style="color:var(--l2)">Chaufförstips — Linje 2</div>
+          <ul style="font-size:13px;color:var(--text);padding-left:16px;margin:0">
+            <li>Linje 2 delar BRT-körfält med linje 1 i centrum</li>
+            <li>Tegnérlunden: samma omledning som linje 1 gäller</li>
+            <li>Mellringe: vändmöjlighet vid terminalen</li>
+            <li>Studenttrafik: hög belastning Universitetsplatsen 08–09 och 16–18</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════ LINJE 3 ════════════════════════════════════ -->
+  <div class="bs-panel" id="panel-3">
+    <div class="route-hdr" style="background:rgba(41,128,185,.06);border-color:rgba(41,128,185,.3)">
+      <div class="line-badge" style="background:var(--l3)">3</div>
+      <div>
+        <div class="route-title">Lundby — Vivalla — Resecentrum — Solhaga</div>
+        <div class="route-sub">19 hållplatser · Diagonalrutt nordväst–östsydöst · Via Rosta</div>
+      </div>
+    </div>
+
+    <div class="alert" onclick="openAlertModal(this)" title="Klicka för mer info"
+      data-title="VA-arbeten — Linje 3"
+      data-detail="&lt;strong&gt;Baronbackarna&lt;/strong&gt; är tillfälligt förflyttad ~100 m norrut på grund av VA-arbeten.&lt;br&gt;&lt;br&gt;Denna störning är kopplad till samma VA-arbete som påverkar linje 1. Se Svealandstrafikens förarportal för bekräftelse av nuvarande hållplatsläge.">
+      <div class="alert-icon"><svg viewBox="0 0 16 16" fill="none" stroke="#ffa700" stroke-width="1.4" width="14" height="14"><polygon points="8,2 14,13 2,13" opacity=".7"/><line x1="8" y1="6" x2="8" y2="9.5" stroke-linecap="round"/><circle cx="8" cy="11.2" r=".8" fill="#ffa700" stroke="none"/></svg></div>
+      <div><strong>Baronbackarna</strong> tillfälligt förflyttad ~100 m norrut (delar störning med linje 1). <span style="font-size:10px;color:rgba(255,167,0,.6);margin-left:6px">▸ Klicka för detaljer</span></div>
+    </div>
+
+    <div class="map-wrap">
+      <div id="map-3" class="leaflet-map"></div>
+    </div>
+
+    <div class="stops-grid">
+      <div class="stops-col">
+        <div class="stops-col-hdr" style="background:var(--l3)">→ Riktning: Solhaga → Lundby</div>
+        <div class="stop-item stop-first"><div class="stop-num" style="background:var(--l3)">1</div><span class="stop-name">Stödjegränd (Solhaga)</span></div>
+        <div class="stop-item"><div class="stop-num">2</div><span class="stop-name">Stolpgränd</span></div>
+        <div class="stop-item"><div class="stop-num">3</div><span class="stop-name">Rosta gärde</span></div>
+        <div class="stop-item"><div class="stop-num">4</div><span class="stop-name">Risbergska</span></div>
+        <div class="stop-item"><div class="stop-num">5</div><span class="stop-name">Västra Vintergatan</span></div>
+        <div class="stop-item"><div class="stop-num">6</div><span class="stop-name">Rosta centrum</span></div>
+        <div class="stop-item"><div class="stop-num">7</div><span class="stop-name">Trumpetaregatan</span></div>
+        <div class="stop-item"><div class="stop-num">8</div><span class="stop-name">Hagagatan</span></div>
+        <div class="stop-item"><div class="stop-num">9</div><span class="stop-name">Kulturkvarteret</span></div>
+        <div class="stop-item stop-center"><div class="stop-num" style="background:rgba(0,212,255,.15);color:var(--cyan)">10</div><span class="stop-name"><strong>Örebro Resecentrum</strong></span></div>
+        <div class="stop-item"><div class="stop-num">11</div><span class="stop-name">Tegnérlunden</span><span class="stop-note">⚠ → Tegnérgatan</span></div>
+        <div class="stop-item"><div class="stop-num">12</div><span class="stop-name">Lövstagatan</span></div>
+        <div class="stop-item"><div class="stop-num">13</div><span class="stop-name">Baronbackarna</span><span class="stop-note">⚠ tillfälligt förflyttad</span></div>
+        <div class="stop-item"><div class="stop-num">14</div><span class="stop-name">Boglundsängen</span></div>
+        <div class="stop-item"><div class="stop-num">15</div><span class="stop-name">Poesigatan</span></div>
+        <div class="stop-item"><div class="stop-num">16</div><span class="stop-name">Vivalla centrum</span></div>
+        <div class="stop-item"><div class="stop-num">17</div><span class="stop-name">Trädgårdarna</span></div>
+        <div class="stop-item"><div class="stop-num">18</div><span class="stop-name">Lundby centrum</span></div>
+        <div class="stop-item stop-last"><div class="stop-num" style="background:var(--l3)">19</div><span class="stop-name">Skiffergatan</span></div>
+      </div>
+      <div class="stops-col">
+        <div class="stops-col-hdr" style="background:rgba(20,60,110,.8)">← Riktning: Lundby → Solhaga</div>
+        <div style="padding:14px">
+          <div class="card-title" style="color:var(--l3)">Ruttprofil</div>
+          <p style="font-size:13px;color:var(--muted);margin:0 0 10px">Linje 3 är en diagonalrutt som kopplar ihop nordvästra Örebro (Lundby/Vivalla) med östra sidan (Rosta/Solhaga) via centrum. Tänk på den som ett kors — inte en enkel in-och-ut-linje.</p>
+          <div class="card-title" style="color:var(--l3)">Viktiga hållplatser</div>
+          <ul style="font-size:13px;color:var(--text);padding-left:16px;margin:0 0 10px">
+            <li><strong>Rosta centrum</strong> — Lokalt centrum öst om city</li>
+            <li><strong>Vivalla centrum</strong> — Tätbefolkat område</li>
+            <li><strong>Lundby centrum</strong> — Norra Örebro</li>
+          </ul>
+          <div class="card-title" style="color:var(--l3)">Chaufförstips — Linje 3</div>
+          <ul style="font-size:13px;color:var(--text);padding-left:16px;margin:0">
+            <li>Lång rutt med riktingsbyte i centrum — håll koll på hållplatsordning</li>
+            <li>Hagagatan/Rosta: smalare gator, låg hastighet</li>
+            <li>Vivalla: hög belastning under skolstart/-slut</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════ LINJE 4 ════════════════════════════════════ -->
+  <div class="bs-panel" id="panel-4">
+    <div class="route-hdr" style="background:rgba(230,126,34,.06);border-color:rgba(230,126,34,.3)">
+      <div class="line-badge" style="background:var(--l4)">4</div>
+      <div>
+        <div class="route-title">Rynningeåsen — USÖ — Resecentrum — Marieberg</div>
+        <div class="route-sub">20 hållplatser · Via Universitetssjukhuset USÖ · Söderut via Nasta</div>
+      </div>
+    </div>
+
+    <div class="map-wrap">
+      <div id="map-4" class="leaflet-map"></div>
+    </div>
+
+    <div class="stops-grid">
+      <div class="stops-col">
+        <div class="stops-col-hdr" style="background:var(--l4)">→ Riktning: Rynningeåsen → Marieberg</div>
+        <div class="stop-item stop-first"><div class="stop-num" style="background:var(--l4)">1</div><span class="stop-name">Björkbacksgatan (Rynningeåsen)</span></div>
+        <div class="stop-item"><div class="stop-num">2</div><span class="stop-name">Grenadjärvallen</span></div>
+        <div class="stop-item"><div class="stop-num">3</div><span class="stop-name">Honolulugatan</span></div>
+        <div class="stop-item stop-center"><div class="stop-num" style="background:rgba(255,60,60,.2);color:#ff8888">4</div><span class="stop-name"><strong>USÖ M-huset</strong></span></div>
+        <div class="stop-item stop-center"><div class="stop-num" style="background:rgba(0,212,255,.15);color:var(--cyan)">5</div><span class="stop-name"><strong>Örebro Resecentrum</strong></span></div>
+        <div class="stop-item"><div class="stop-num">6</div><span class="stop-name">Kulturkvarteret</span></div>
+        <div class="stop-item"><div class="stop-num">7</div><span class="stop-name">Svartå Bangata</span></div>
+        <div class="stop-item"><div class="stop-num">8</div><span class="stop-name">Idrottsvägen</span></div>
+        <div class="stop-item"><div class="stop-num">9</div><span class="stop-name">Aspholmsvägen</span></div>
+        <div class="stop-item"><div class="stop-num">10</div><span class="stop-name">Skvadronvägen</span></div>
+        <div class="stop-item"><div class="stop-num">11</div><span class="stop-name">Boställsvägen</span></div>
+        <div class="stop-item"><div class="stop-num">12</div><span class="stop-name">Elementvägen</span></div>
+        <div class="stop-item"><div class="stop-num">13</div><span class="stop-name">Nasta</span></div>
+        <div class="stop-item"><div class="stop-num">14</div><span class="stop-name">Brunnsparken</span></div>
+        <div class="stop-item"><div class="stop-num">15</div><span class="stop-name">Korskyrkan</span></div>
+        <div class="stop-item"><div class="stop-num">16</div><span class="stop-name">Sanatorievägen</span></div>
+        <div class="stop-item"><div class="stop-num">17</div><span class="stop-name">Hjälmarberget</span></div>
+        <div class="stop-item"><div class="stop-num">18</div><span class="stop-name">Rabattvägen</span></div>
+        <div class="stop-item"><div class="stop-num">19</div><span class="stop-name">Marieberg köpcentrum</span></div>
+        <div class="stop-item stop-last"><div class="stop-num" style="background:var(--l4)">20</div><span class="stop-name">Kundvägen</span></div>
+      </div>
+      <div class="stops-col">
+        <div class="stops-col-hdr" style="background:rgba(130,70,10,.8)">← Riktning: Marieberg → Rynningeåsen</div>
+        <div style="padding:14px">
+          <div class="card-title" style="color:var(--l4)">Viktiga hållplatser</div>
+          <ul style="font-size:13px;color:var(--text);padding-left:16px;margin:0 0 10px">
+            <li><strong>USÖ M-huset</strong> — Universitetssjukhuset, hög stigning sjukvårdspersonal</li>
+            <li><strong>Nasta</strong> — Industriområde, arbetspendlare</li>
+            <li><strong>Marieberg köpcentrum</strong> — Stort köpcentrum söder om centrum</li>
+          </ul>
+          <div class="card-title" style="color:var(--l4)">Chaufförstips — Linje 4</div>
+          <ul style="font-size:13px;color:var(--text);padding-left:16px;margin:0">
+            <li>USÖ M-huset: förvänta rullstolar och sjukhussängar — ge extra tid</li>
+            <li>Marieberg köpcentrum: stor vändplats, parkera korrekt</li>
+            <li>Nasta: tung morgontrafik med pendlare</li>
+            <li>Svartå Bangata: gå ner i hastighet, cykelöverfarter</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════ LINJE 5 ════════════════════════════════════ -->
+  <div class="bs-panel" id="panel-5">
+    <div class="route-hdr" style="background:rgba(142,68,173,.06);border-color:rgba(142,68,173,.3)">
+      <div class="line-badge" style="background:var(--l5)">5</div>
+      <div>
+        <div class="route-title">Hovsta — Lillåns Center — Svampen — Resecentrum — Tybble</div>
+        <div class="route-sub">29 hållplatser · Längsta pendellinje · Via Stortorget och Drottninggatan</div>
+      </div>
+    </div>
+
+    <div class="map-wrap">
+      <div id="map-5" class="leaflet-map"></div>
+    </div>
+
+    <div class="stops-grid">
+      <div class="stops-col">
+        <div class="stops-col-hdr" style="background:var(--l5)">→ Riktning: Hovsta → Tybble</div>
+        <div class="stop-item stop-first"><div class="stop-num" style="background:var(--l5)">1</div><span class="stop-name">Hovsta station</span></div>
+        <div class="stop-item"><div class="stop-num">2</div><span class="stop-name">Kårstavägen</span></div>
+        <div class="stop-item"><div class="stop-num">3</div><span class="stop-name">Hovsta centrum</span></div>
+        <div class="stop-item"><div class="stop-num">4</div><span class="stop-name">Lundvägen</span></div>
+        <div class="stop-item"><div class="stop-num">5</div><span class="stop-name">Rågvägen</span></div>
+        <div class="stop-item"><div class="stop-num">6</div><span class="stop-name">Vetevägen</span></div>
+        <div class="stop-item"><div class="stop-num">7</div><span class="stop-name">Förlunda</span></div>
+        <div class="stop-item"><div class="stop-num">8</div><span class="stop-name">Lillåns Center</span></div>
+        <div class="stop-item"><div class="stop-num">9</div><span class="stop-name">Lillåns skola</span></div>
+        <div class="stop-item"><div class="stop-num">10</div><span class="stop-name">Kåvivägen</span></div>
+        <div class="stop-item"><div class="stop-num">11</div><span class="stop-name">Sliparevägen</span></div>
+        <div class="stop-item"><div class="stop-num">12</div><span class="stop-name">Krematoriet</span></div>
+        <div class="stop-item"><div class="stop-num">13</div><span class="stop-name">Norra Kyrkogården</span></div>
+        <div class="stop-item"><div class="stop-num">14</div><span class="stop-name">Hagaby</span></div>
+        <div class="stop-item stop-center"><div class="stop-num" style="background:rgba(142,68,173,.3)">15</div><span class="stop-name"><strong>Svampen</strong></span></div>
+        <div class="stop-item stop-center"><div class="stop-num" style="background:rgba(0,212,255,.15);color:var(--cyan)">16</div><span class="stop-name"><strong>Örebro Resecentrum</strong></span></div>
+        <div class="stop-item"><div class="stop-num">17</div><span class="stop-name">Slottet</span></div>
+        <div class="stop-item"><div class="stop-num">18</div><span class="stop-name">Stortorget</span></div>
+        <div class="stop-item"><div class="stop-num">19</div><span class="stop-name">Drottninggatan</span></div>
+        <div class="stop-item"><div class="stop-num">20</div><span class="stop-name">Olof Palmes torg</span></div>
+        <div class="stop-item"><div class="stop-num">21</div><span class="stop-name">Sveaparken</span></div>
+        <div class="stop-item"><div class="stop-num">22</div><span class="stop-name">Södra Allén</span></div>
+        <div class="stop-item"><div class="stop-num">23</div><span class="stop-name">Tullängsgymnasiet</span></div>
+        <div class="stop-item"><div class="stop-num">24</div><span class="stop-name">Loftbodsgatan</span></div>
+        <div class="stop-item"><div class="stop-num">25</div><span class="stop-name">Fatbursgatan</span></div>
+        <div class="stop-item"><div class="stop-num">26</div><span class="stop-name">Termikgatan</span></div>
+        <div class="stop-item"><div class="stop-num">27</div><span class="stop-name">Karlsdalsallén</span></div>
+        <div class="stop-item"><div class="stop-num">28</div><span class="stop-name">Lavendelvägen</span></div>
+        <div class="stop-item stop-last"><div class="stop-num" style="background:var(--l5)">29</div><span class="stop-name">Tybble vårdcentral</span></div>
+      </div>
+      <div class="stops-col">
+        <div class="stops-col-hdr" style="background:rgba(80,30,100,.8)">← Riktning: Tybble → Hovsta</div>
+        <div style="padding:14px">
+          <div class="card-title" style="color:var(--l5)">Viktiga hållplatser</div>
+          <ul style="font-size:13px;color:var(--text);padding-left:16px;margin:0 0 10px">
+            <li><strong>Hovsta station</strong> — Anslutning till tåg, bytespunkt</li>
+            <li><strong>Lillåns Center</strong> — Lokalt centrum, skolbarn</li>
+            <li><strong>Svampen</strong> — Örebros vattentorn, landmärke</li>
+            <li><strong>Stortorget</strong> — Centralt torg, hög stigning</li>
+            <li><strong>Tullängsgymnasiet</strong> — Gymnasium, skolstart/-slut</li>
+          </ul>
+          <div class="card-title" style="color:var(--l5)">Chaufförstips — Linje 5</div>
+          <ul style="font-size:13px;color:var(--text);padding-left:16px;margin:0">
+            <li>29 hållplatser — planera paustid noggrant</li>
+            <li>Hovsta–Lillåns: halvlandsortsmiljö, håll tidplan</li>
+            <li>Tullängsgymnasiet: massiv stigning 07:45–08:10</li>
+            <li>Stortorget: gångfartszon, extrem försiktighet</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════ LINJE 6 ════════════════════════════════════ -->
+  <div class="bs-panel" id="panel-6">
+    <div class="route-hdr" style="background:rgba(22,160,133,.06);border-color:rgba(22,160,133,.3)">
+      <div class="line-badge" style="background:var(--l6)">6</div>
+      <div>
+        <div class="route-title">Björkhaga — USÖ Akuten — Resecentrum — Universitetet</div>
+        <div class="route-sub">26 hållplatser · Via Universitetssjukhuset (alla ingångar) · Haga centrum</div>
+      </div>
+    </div>
+
+    <div class="map-wrap">
+      <div id="map-6" class="leaflet-map"></div>
+    </div>
+
+    <div class="stops-grid">
+      <div class="stops-col">
+        <div class="stops-col-hdr" style="background:var(--l6)">→ Riktning: Universitetet → Björkhaga</div>
+        <div class="stop-item stop-first"><div class="stop-num" style="background:var(--l6)">1</div><span class="stop-name">Universitetsplatsen</span></div>
+        <div class="stop-item"><div class="stop-num">2</div><span class="stop-name">Fakultetsgatan</span></div>
+        <div class="stop-item"><div class="stop-num">3</div><span class="stop-name">Tybblelundsvägen</span></div>
+        <div class="stop-item"><div class="stop-num">4</div><span class="stop-name">Tärnvägen</span></div>
+        <div class="stop-item"><div class="stop-num">5</div><span class="stop-name">Valsaregatan</span></div>
+        <div class="stop-item"><div class="stop-num">6</div><span class="stop-name">Holländaregatan</span></div>
+        <div class="stop-item"><div class="stop-num">7</div><span class="stop-name">Ingenjörsgatan</span></div>
+        <div class="stop-item"><div class="stop-num">8</div><span class="stop-name">Salsmästaregatan</span></div>
+        <div class="stop-item"><div class="stop-num">9</div><span class="stop-name">Hagmarksrondellen</span></div>
+        <div class="stop-item"><div class="stop-num">10</div><span class="stop-name">Wadköpingsvägen</span></div>
+        <div class="stop-item stop-center"><div class="stop-num" style="background:rgba(255,60,60,.2);color:#ff8888">11</div><span class="stop-name"><strong>USÖ slussen</strong></span></div>
+        <div class="stop-item stop-center"><div class="stop-num" style="background:rgba(255,60,60,.2);color:#ff8888">12</div><span class="stop-name"><strong>USÖ akuten</strong></span></div>
+        <div class="stop-item stop-center"><div class="stop-num" style="background:rgba(255,60,60,.2);color:#ff8888">13</div><span class="stop-name"><strong>USÖ H-huset</strong></span></div>
+        <div class="stop-item stop-center"><div class="stop-num" style="background:rgba(255,60,60,.2);color:#ff8888">14</div><span class="stop-name"><strong>USÖ Södra Grev Rosengatan</strong></span></div>
+        <div class="stop-item stop-center"><div class="stop-num" style="background:rgba(0,212,255,.15);color:var(--cyan)">15</div><span class="stop-name"><strong>Örebro Resecentrum</strong></span></div>
+        <div class="stop-item"><div class="stop-num">16</div><span class="stop-name">Kulturkvarteret</span></div>
+        <div class="stop-item"><div class="stop-num">17</div><span class="stop-name">Gumaeliusskolan</span></div>
+        <div class="stop-item"><div class="stop-num">18</div><span class="stop-name">Slåttervägen</span></div>
+        <div class="stop-item"><div class="stop-num">19</div><span class="stop-name">Tengvallsgatan</span></div>
+        <div class="stop-item"><div class="stop-num">20</div><span class="stop-name">Tornfalkgatan</span></div>
+        <div class="stop-item"><div class="stop-num">21</div><span class="stop-name">Haga centrum</span></div>
+        <div class="stop-item"><div class="stop-num">22</div><span class="stop-name">Domherregatan</span></div>
+        <div class="stop-item"><div class="stop-num">23</div><span class="stop-name">Vaktelvägen</span></div>
+        <div class="stop-item"><div class="stop-num">24</div><span class="stop-name">Korsbandsgatan</span></div>
+        <div class="stop-item"><div class="stop-num">25</div><span class="stop-name">Postmästaregatan</span></div>
+        <div class="stop-item stop-last"><div class="stop-num" style="background:var(--l6)">26</div><span class="stop-name">Posthornsgatan (Björkhaga)</span></div>
+      </div>
+      <div class="stops-col">
+        <div class="stops-col-hdr" style="background:rgba(10,80,65,.8)">← Riktning: Björkhaga → Universitetet</div>
+        <div style="padding:14px">
+          <div class="card" style="background:rgba(255,60,60,.06);border-color:rgba(255,60,60,.25);border-left:3px solid #ff4444;">
+            <div class="card-title" style="color:#ff8888">USÖ — 4 separata ingångar</div>
+            <p style="font-size:12px;color:var(--muted);margin:0">Linje 6 passerar USÖ Universitetssjukhus via fyra olika ingångar. Resenärer frågar ofta vilken de ska av vid.</p>
+            <ul style="font-size:12px;color:var(--text);padding-left:14px;margin:6px 0 0">
+              <li><strong>USÖ slussen</strong> — administration, ingång väster</li>
+              <li><strong>USÖ akuten</strong> — akutmottagning</li>
+              <li><strong>USÖ H-huset</strong> — psykiatri och specialkliniker</li>
+              <li><strong>USÖ Södra Grev Rosengatan</strong> — södra ingången</li>
+            </ul>
+          </div>
+          <div class="card-title" style="color:var(--l6);margin-top:10px">Chaufförstips — Linje 6</div>
+          <ul style="font-size:13px;color:var(--text);padding-left:16px;margin:0">
+            <li>Sjukhusstigen: förvänta rullstolar, barn i vagn, äldre</li>
+            <li>Ge tydlig information om vilken USÖ-ingång vid fråga</li>
+            <li>Haga centrum: smalare gata, möte med bilar vanligt</li>
+            <li>Björkhaga: vändplats i bostadskvarter, kör försiktigt</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════ LINJE 7 ════════════════════════════════════ -->
+  <div class="bs-panel" id="panel-7">
+    <div class="route-hdr" style="background:rgba(211,84,0,.06);border-color:rgba(211,84,0,.3)">
+      <div class="line-badge" style="background:var(--l7)">7</div>
+      <div>
+        <div class="route-title">Lillån — Svampen — Resecentrum — Stortorget — Mosås</div>
+        <div class="route-sub">42 hållplatser · Längsta linjen · Via Pettersberg, Adolfsberg och Drottningholm</div>
+      </div>
+    </div>
+
+    <div class="map-wrap">
+      <div id="map-7" class="leaflet-map"></div>
+    </div>
+
+    <div class="stops-grid">
+      <div class="stops-col">
+        <div class="stops-col-hdr" style="background:var(--l7)">→ Riktning: Lillån → Mosås (Viktor Dahléns v.)</div>
+        <div class="stop-item stop-first"><div class="stop-num" style="background:var(--l7)">1</div><span class="stop-name">Lillåns vårdcentral</span></div>
+        <div class="stop-item"><div class="stop-num">2</div><span class="stop-name">Rödklövervägen</span></div>
+        <div class="stop-item"><div class="stop-num">3</div><span class="stop-name">Stenbovägen</span></div>
+        <div class="stop-item"><div class="stop-num">4</div><span class="stop-name">Östanbergsvägen</span></div>
+        <div class="stop-item"><div class="stop-num">5</div><span class="stop-name">Klockarängsvägen</span></div>
+        <div class="stop-item"><div class="stop-num">6</div><span class="stop-name">Vinterhagsvägen</span></div>
+        <div class="stop-item"><div class="stop-num">7</div><span class="stop-name">Ligustervägen</span></div>
+        <div class="stop-item"><div class="stop-num">8</div><span class="stop-name">Tujavägen</span></div>
+        <div class="stop-item"><div class="stop-num">9</div><span class="stop-name">Kornellvägen</span></div>
+        <div class="stop-item"><div class="stop-num">10</div><span class="stop-name">Skottvägen</span></div>
+        <div class="stop-item"><div class="stop-num">11</div><span class="stop-name">Karosserigatan</span></div>
+        <div class="stop-item"><div class="stop-num">12</div><span class="stop-name">Nolhagavägen</span></div>
+        <div class="stop-item"><div class="stop-num">13</div><span class="stop-name">Ringstorpsvägen</span></div>
+        <div class="stop-item stop-center"><div class="stop-num" style="background:rgba(211,84,0,.3)">14</div><span class="stop-name"><strong>Svampen östra</strong></span></div>
+        <div class="stop-item"><div class="stop-num">15</div><span class="stop-name">Pettersberg</span></div>
+        <div class="stop-item"><div class="stop-num">16</div><span class="stop-name">Norrby</span></div>
+        <div class="stop-item"><div class="stop-num">17</div><span class="stop-name">Phragménsvägen</span></div>
+        <div class="stop-item"><div class="stop-num">18</div><span class="stop-name">Längbrotorg</span></div>
+        <div class="stop-item"><div class="stop-num">19</div><span class="stop-name">Bromsplan</span></div>
+        <div class="stop-item"><div class="stop-num">20</div><span class="stop-name">Olaus Petrikyrkan</span></div>
+        <div class="stop-item stop-center"><div class="stop-num" style="background:rgba(0,212,255,.15);color:var(--cyan)">21</div><span class="stop-name"><strong>Örebro Resecentrum</strong></span></div>
+        <div class="stop-item"><div class="stop-num">22</div><span class="stop-name">Slottet</span></div>
+        <div class="stop-item"><div class="stop-num">23</div><span class="stop-name">Stortorget</span></div>
+        <div class="stop-item"><div class="stop-num">24</div><span class="stop-name">Drottninggatan</span></div>
+        <div class="stop-item"><div class="stop-num">25</div><span class="stop-name">Olof Palmes torg</span></div>
+        <div class="stop-item"><div class="stop-num">26</div><span class="stop-name">Kungsgatan</span></div>
+        <div class="stop-item"><div class="stop-num">27</div><span class="stop-name">Klerkgatan</span></div>
+        <div class="stop-item"><div class="stop-num">28</div><span class="stop-name">Storbackavägen</span></div>
+        <div class="stop-item"><div class="stop-num">29</div><span class="stop-name">Halltorpsvägen</span></div>
+        <div class="stop-item"><div class="stop-num">30</div><span class="stop-name">Adolfsbergsskolan</span></div>
+        <div class="stop-item"><div class="stop-num">31</div><span class="stop-name">Stentorpsvägen</span></div>
+        <div class="stop-item"><div class="stop-num">32</div><span class="stop-name">Motorpsvägen</span></div>
+        <div class="stop-item"><div class="stop-num">33</div><span class="stop-name">Ekeskolan</span></div>
+        <div class="stop-item"><div class="stop-num">34</div><span class="stop-name">Drottningholm</span></div>
+        <div class="stop-item"><div class="stop-num">35</div><span class="stop-name">Mobackavägen</span></div>
+        <div class="stop-item"><div class="stop-num">36</div><span class="stop-name">Dr Kristinas väg</span></div>
+        <div class="stop-item"><div class="stop-num">37</div><span class="stop-name">Torells väg</span></div>
+        <div class="stop-item"><div class="stop-num">38</div><span class="stop-name">Mariebergsvägen</span></div>
+        <div class="stop-item"><div class="stop-num">39</div><span class="stop-name">Bäcklunda</span></div>
+        <div class="stop-item"><div class="stop-num">40</div><span class="stop-name">Paketvägen</span></div>
+        <div class="stop-item"><div class="stop-num">41</div><span class="stop-name">Brännbollsplan</span></div>
+        <div class="stop-item stop-last"><div class="stop-num" style="background:var(--l7)">42</div><span class="stop-name">Viktor Dahléns väg</span></div>
+      </div>
+      <div class="stops-col">
+        <div class="stops-col-hdr" style="background:rgba(120,40,0,.8)">← Riktning: Mosås → Lillån</div>
+        <div style="padding:14px">
+          <div class="card amber">
+            <div class="card-title">Längsta linjen — Planera extra tid</div>
+            <p style="font-size:13px;color:var(--text);margin:0">42 hållplatser är den längsta av de centrala stadslinjerna. Räkna med 55–65 minuter genomkörningstid. Planera pauser vid terminalar.</p>
+          </div>
+          <div class="card-title" style="color:var(--l7);margin-top:10px">Viktiga hållplatser</div>
+          <ul style="font-size:13px;color:var(--text);padding-left:16px;margin:0 0 10px">
+            <li><strong>Svampen östra</strong> — Örebros landmärke, turiststigning</li>
+            <li><strong>Stortorget / Slottet</strong> — Central city, hög belastning</li>
+            <li><strong>Adolfsbergsskolan</strong> — Skolbarn</li>
+            <li><strong>Viktor Dahléns väg</strong> — Ändstation Mosås, vändplats</li>
+          </ul>
+          <div class="card-title" style="color:var(--l7)">Chaufförstips — Linje 7</div>
+          <ul style="font-size:13px;color:var(--text);padding-left:16px;margin:0">
+            <li>Memorera de 42 stoppen — det tar tid. Fokus på ordningen</li>
+            <li>Stortorget: gångfartszon, extra försiktig med fotgängare</li>
+            <li>Adolfsberg/Drottningholm: lugn villastad, cyklar på vägen</li>
+            <li>Mosås-sidan: smalare gator, kontrollera höjdklearens</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════ LATHUND & REGLER ════════════════════════════════════ -->
+  <div class="bs-panel" id="panel-9">
+
+    <div class="pg-hdr" style="margin-bottom:16px">
+      <div class="pg-icon" style="background:rgba(255,170,0,.08);border-color:rgba(255,170,0,.2)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ffa700" stroke-width="1.5" width="26" height="26">
+          <path d="M9 12h6M9 16h4M7 4H4a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V9l-5-5H7z"/>
+          <path d="M13 4v5h5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="pg-h1">Lathund — Nyexaminerad busschaufför</div>
+        <div class="pg-sub">Biljettregler · Trivselregler · Prisgrupper · Verktygslåda · Källa: Länstrafiken Örebro, Samtrafiken, Trafikverket</div>
+      </div>
+    </div>
+
+    <div id="lath-filter">
+      <button class="lath-fb active" data-topic="alla"       onclick="filterLath('alla')">ALLA</button>
+      <button class="lath-fb" data-topic="skiftstart"        onclick="filterLath('skiftstart')">SKIFTSTART</button>
+      <button class="lath-fb" data-topic="biljetter"         onclick="filterLath('biljetter')">BILJETTER</button>
+      <button class="lath-fb" data-topic="regler"            onclick="filterLath('regler')">REGLER</button>
+      <button class="lath-fb" data-topic="teknik"            onclick="filterLath('teknik')">TEKNIK</button>
+      <button class="lath-fb" data-topic="drift"             onclick="filterLath('drift')">STÖRNINGAR</button>
+      <button class="lath-fb" data-topic="referens"          onclick="filterLath('referens')">REFERENS</button>
+    </div>
+
+    <div class="sec-lbl">Skiftstart — Checklista innan avgång</div>
+    <div class="rule-grid" style="margin-bottom:20px">
+      <div class="rule-card" style="border-color:rgba(0,212,255,.3)">
+        <h4 style="color:var(--cyan)">1. Fordon &amp; teknik</h4>
+        <ul>
+          <li>Kontrollera fordonsnummer och att det stämmer med din tur</li>
+          <li>Kolla bränsle/laddningsnivå — minst 30% kvar vid turavgång</li>
+          <li>Testa alla dörrar (öppna/stäng) — rapportera om dörr krånglar</li>
+          <li>Kontrollera ramp/kneeling — aktivera och verifiera funktion</li>
+          <li>Kontrollera biljettmaskin: startskärm visas, kvittorulle finns</li>
+          <li>Spegelläge, säte, bälte — inställt innan avgång</li>
+        </ul>
+      </div>
+      <div class="rule-card" style="border-color:rgba(255,183,0,.3)">
+        <h4 style="color:#ffb700">2. Trafikinformation</h4>
+        <ul>
+          <li>Logga in i förarterminalen och bekräfta din tur</li>
+          <li>Läs aktuella meddelanden från trafikledning</li>
+          <li>Kontrollera omledningar för din linje i portalen</li>
+          <li>Känn till aktuellt vägarbete längs rutten (ex. VA-arbeten)</li>
+          <li>Kolla GTFS-RT trafikstörningar i Länstrafikens system</li>
+        </ul>
+      </div>
+      <div class="rule-card" style="border-color:rgba(39,174,96,.3)">
+        <h4 style="color:#27ae60">3. Passagerarsäkerhet</h4>
+        <ul>
+          <li>Säkerhetsbälte på innan rullning — inga undantag</li>
+          <li>Kontrollera att inget är kvar i dörrarnas väg vid stängning</li>
+          <li>Nödutgångars läge — bekant med aktuellt fordon</li>
+          <li>Brandsläckare och förbandslåda — vet du var de sitter?</li>
+          <li>Telefon för kontakt med trafikledning laddad och redo</li>
+        </ul>
+      </div>
+      <div class="rule-card" style="border-color:rgba(142,68,173,.3)">
+        <h4 style="color:#8e44ad">4. Avsluta skiftet rätt</h4>
+        <ul>
+          <li>Rapportera fordonsskador eller tekniska fel direkt</li>
+          <li>Kvittera ur dig i terminalen — logga av korrekt</li>
+          <li>Städa fordonet om det är sista turen (plocka upp glömt gods)</li>
+          <li>Lämna nycklar/accesskort till nästa chaufför eller depå</li>
+          <li>Störande händelser eller biljettfusk — notera i körjournal</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sec-lbl">Biljetter — Vad du som chaufför måste kunna</div>
+    <div class="rule-grid">
+      <div class="rule-card">
+        <h4>Giltiga biljetttyper</h4>
+        <ul>
+          <li><strong>App-biljett</strong> — Länstrafikens app, visas på skärm</li>
+          <li><strong>Resekort</strong> — Kontaktlöst kort, valideras vid läsare</li>
+          <li><strong>Period­biljett</strong> — 30-dagars, 24h, Flex 10/40</li>
+          <li><strong>Ombordköp</strong> — Swish eller kontant (vissa fordon)</li>
+          <li><strong>SMS-biljett</strong> — äldre format, fortfarande giltigt</li>
+          <li><strong>Pappersbiljett</strong> — från ombud, streckkod skannas</li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>Prisgrupper — Chaufförsöversikt</h4>
+        <ul>
+          <li><strong>0–6 år:</strong> Reser gratis (max 2 med betalande vuxen, tredje betalar ungdomspris)</li>
+          <li><strong>7–19 år:</strong> Ungdomspris</li>
+          <li><strong>20–69 år:</strong> Vuxenpris</li>
+          <li><strong>70+ år:</strong> Seniorpris</li>
+          <li><strong>Student 20+:</strong> Reducerat med giltig student-ID och digitala studentuppgifter</li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>Priser — Örebro stad (2025–2026)</h4>
+        <ul>
+          <li><strong>Enkelbiljett vuxen:</strong> 17 kr (app) · 25 kr (ombord)</li>
+          <li><strong>30-dagars vuxen:</strong> 390 kr (halverat pris fr.o.m. 2025)</li>
+          <li><strong>24h-biljett:</strong> 35 kr (ungdom) – 128 kr (familj)</li>
+          <li><strong>Flex 10/40:</strong> 205–380 kr beroende på grupp</li>
+          <li><strong>Hel länet 30 dagar:</strong> 830 kr vuxen</li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>Biljett saknas — Vad gör du?</h4>
+        <ul>
+          <li>Be passageraren <strong>visa giltig biljett</strong> — du är skyldig att kontrollera</li>
+          <li>Resenären hänvisas köpa ombord (Swish/kontant) eller i app</li>
+          <li>Du <strong>kan inte</strong> neka påstigning om resenären vägrar betala — notera och rapportera</li>
+          <li>Vid upprepad fusk: tilläggsavgift utfärdas av biljettinspektör (ej chaufför)</li>
+          <li>Ringer du in: kontakta trafikledning, notera tid och hållplats</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sec-lbl">Trivselregler ombord — Din skyldighet som chaufför</div>
+    <div class="rule-grid">
+      <div class="rule-card">
+        <h4>Förbjudet ombord</h4>
+        <ul>
+          <li><strong>Rökning</strong> — absolut förbud, inkl. e-cigaretter</li>
+          <li><strong>Alkohol</strong> — ej förtäring ombord</li>
+          <li><strong>Skateboard / sparkcykel</strong> — ej tillåtet ombord</li>
+          <li><strong>Störande ljud</strong> — musik utan hörlurar, aggressivt beteende</li>
+          <li><strong>Smuts</strong> — mat som skräpar ned är inte tillåten</li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>Bagage och fordon</h4>
+        <ul>
+          <li><strong>Handbaggage</strong> — gratis, max det du kan hålla i handen</li>
+          <li><strong>Vikbar cykel</strong> — gratis om hopvikt under 120 cm</li>
+          <li><strong>Barnvagn / rollator</strong> — i avsedda utrymmen</li>
+          <li><strong>Rullstol</strong> — prioriterad plats, fäll upp sätet om nödvändigt</li>
+          <li><strong>Elscooter</strong> — ej tillåten om ej hopvikbar</li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>Djur ombord</h4>
+        <ul>
+          <li><strong>Hundar, katter, husdjur</strong> — gratis om kopplade eller i bur</li>
+          <li><strong>Tjänstehundar</strong> — alltid tillåtna, får sitta i framsektionen</li>
+          <li><strong>Övriga djur</strong> — ska sitta i bakre delen av bussen</li>
+          <li><strong>Stora hundar</strong> — kopplade och myndiga raser: kontrollera lugnhet</li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>Chaufförsansvar vid konflikt</h4>
+        <ul>
+          <li>Du <strong>får</strong> be störande resenärer att lämna bussen</li>
+          <li>Vid hot eller våld: <strong>ring 112</strong> och stanna bussen på säker plats</li>
+          <li>Kontakta <strong>trafikledningen</strong> vid alla allvarliga incidenter</li>
+          <li>Fyll alltid i <strong>incidentrapport</strong> efter händelsen</li>
+          <li>Du är inte ensam — trafikledning backar upp dig alltid</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sec-lbl">Verktygslåda — Vad en nyexaminerad chaufför behöver</div>
+    <ul class="tool-list">
+      <li>
+        <div class="tool-icon">
+          <svg viewBox="0 0 16 16" fill="none" stroke="var(--cyan)" stroke-width="1.3" width="16" height="16"><rect x="1" y="3" width="14" height="10" rx="1.5"/><line x1="4" y1="7" x2="12" y2="7" opacity=".4"/><line x1="4" y1="9.5" x2="9" y2="9.5" opacity=".4"/></svg>
+        </div>
+        <div>
+          <div class="tool-name">Svealandstrafikens Förarportal / Trafiksystem</div>
+          <div class="tool-desc">Tidtabeller, turlistor, servicemeddelanden och rutinjer. Loggad in via arbetsgivarens inlogg. Kontrollera alltid aktuell turlistsida innan avgång.</div>
+        </div>
+      </li>
+      <li>
+        <div class="tool-icon">
+          <svg viewBox="0 0 16 16" fill="none" stroke="#ffa700" stroke-width="1.3" width="16" height="16"><rect x="2" y="1.5" width="12" height="13" rx="1.5"/><line x1="5" y1="5" x2="11" y2="5" opacity=".5"/><line x1="5" y1="7.5" x2="11" y2="7.5" opacity=".5"/><line x1="5" y1="10" x2="8" y2="10" opacity=".4"/></svg>
+        </div>
+        <div>
+          <div class="tool-name">Länstrafikens app — Realtid och störningar</div>
+          <div class="tool-desc">Som chaufför: håll koll på aktiva trafikstörningar och omledningar som berör din linje. Passagerare använder appen för biljetter — lär dig känna igen giltiga biljettvyer.</div>
+        </div>
+      </li>
+      <li>
+        <div class="tool-icon">
+          <svg viewBox="0 0 16 16" fill="none" stroke="#00dc78" stroke-width="1.3" width="16" height="16"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.5l2.5 1.5" stroke-linecap="round"/></svg>
+        </div>
+        <div>
+          <div class="tool-name">AVLS — Automatisk Fordonslokaliseringssystem</div>
+          <div class="tool-desc">Systemet i bussen som rapporterar position och avgångstid till trafikledningen. Följ tidplan — AVLS-avvikelser loggas automatiskt och syns i dina körrapporter.</div>
+        </div>
+      </li>
+      <li>
+        <div class="tool-icon">
+          <svg viewBox="0 0 16 16" fill="none" stroke="#b464ff" stroke-width="1.3" width="16" height="16"><path d="M8 1.5l2 4.5h4.5l-3.5 3 1.5 4.5L8 11l-4.5 2.5 1.5-4.5L1.5 6H6z"/></svg>
+        </div>
+        <div>
+          <div class="tool-name">Biljettvalideringsutrustning ombord</div>
+          <div class="tool-desc">Kortläsare för resekort, skannrar för QR-biljetter. Lär dig felsökningsprocedur: om läsaren inte fungerar — notera manuellt och informera trafikledning.</div>
+        </div>
+      </li>
+      <li>
+        <div class="tool-icon">
+          <svg viewBox="0 0 16 16" fill="none" stroke="#ff8888" stroke-width="1.3" width="16" height="16"><path d="M3 13.5A2 2 0 0 1 5 11.5H13"/><path d="M5 2H13v14H5A2 2 0 0 1 3 14V4A2 2 0 0 1 5 2z" opacity=".45"/><line x1="7" y1="5.5" x2="11" y2="5.5" opacity=".6"/><line x1="7" y1="8" x2="11" y2="8" opacity=".5"/></svg>
+        </div>
+        <div>
+          <div class="tool-name">Körtillstånd — YKB (Yrkeskompetensbevis)</div>
+          <div class="tool-desc">Obligatoriskt för yrkesmässig persontransport. Kräver kategori D-körkort + YKB grundutbildning (280 timmar) + fortbildning var 5:e år (35 timmar). Kontrolleras av Transportstyrelsen.</div>
+        </div>
+      </li>
+      <li>
+        <div class="tool-icon">
+          <svg viewBox="0 0 16 16" fill="none" stroke="var(--cyan)" stroke-width="1.3" width="16" height="16"><circle cx="8" cy="6" r="3"/><path d="M2 13.5c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke-linecap="round"/></svg>
+        </div>
+        <div>
+          <div class="tool-name">Trafikledningens direktnummer</div>
+          <div class="tool-desc">Finns i fordonets instrumentpanel och i din turlistpärm. Ring vid: fordonshaveri, olycka, störande passagerare, omledning, medicinsk nödsituation ombord.</div>
+        </div>
+      </li>
+      <li>
+        <div class="tool-icon">
+          <svg viewBox="0 0 16 16" fill="none" stroke="#ffa700" stroke-width="1.3" width="16" height="16"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="8" y1="5" x2="8" y2="8" stroke-linecap="round"/><circle cx="8" cy="10.5" r=".8" fill="#ffa700" stroke="none"/></svg>
+        </div>
+        <div>
+          <div class="tool-name">Incidentrapportformulär</div>
+          <div class="tool-desc">Finns digitalt i förarportalen och som pappersformulär i fordonet. Fylls i efter alla incidenter: våldsbrott, skadegörelse, olyckor, medicinsk nödsituation, aggressivt beteende.</div>
+        </div>
+      </li>
+    </ul>
+
+    <div class="sec-lbl">Citylinjen — Särskilda regler för BRT-drift (Linje 1 &amp; 2)</div>
+    <div class="rule-grid">
+      <div class="rule-card">
+        <h4>Flerdörrspåstigning</h4>
+        <ul>
+          <li>Alla dörrar öppnas vid BRT-hållplatser i Örebro centrum</li>
+          <li>Passagerare validerar biljett vid hållplatsens validerare — <strong>inte</strong> ombord</li>
+          <li>Som chaufför: du ansvarar för att dörrarna stängs korrekt</li>
+          <li>Vid tekniskt fel på hållplatsvaliderare: standard ombordpåstigning</li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>BRT-körfält och trafiksignaler</h4>
+        <ul>
+          <li>Dedikerade busskörfält — inga personbilar tillåtna</li>
+          <li>Prioriteringssignaler (grön våg) aktiveras automatiskt av AVLS</li>
+          <li>Håll turtätheten — 10 min högtrafik är hårt bevakat</li>
+          <li>Kör aldrig om framförvarande buss utan att kontakta trafikledning</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sec-lbl">Aktuella driftstörningar (sep 2026)</div>
+    <div class="card red">
+      <div class="card-title" style="color:#ff4444">VA-arbeten centrala Örebro — Linje 1 och 3</div>
+      <ul style="font-size:13px;color:var(--text);padding-left:16px;margin:0">
+        <li><strong>Period:</strong> 20 september 2026 – sommaren 2027</li>
+        <li><strong>Tegnérlunden:</strong> stängd. Provisorisk hållplats: <strong>Tegnérgatan</strong> (ca 80 m österut)</li>
+        <li><strong>Baronbackarna:</strong> tillfälligt förflyttad ~100 m norrut</li>
+        <li>Kontrollera alltid aktuell omledningsinformation i Svealandstrafikens förarportal före avgång</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">Validatorer — Steg-för-steg vid biljettvalidering</div>
+    <div class="rule-grid">
+      <div class="rule-card">
+        <h4>Kortläsare (Resekort / bankkort)</h4>
+        <ul>
+          <li><strong>Grön blixt + pip:</strong> Giltig biljett, resa bekräftad. Låt passageraren gå.</li>
+          <li><strong>Gul blixt:</strong> Lågt saldo eller resenären har rest nyligen. Informera om att ladda på.</li>
+          <li><strong>Röd blixt + dubbel pip:</strong> Ogiltigt, spärrat eller okänt kort. Be passageraren visa annan biljett eller köpa ombord.</li>
+          <li><strong>Inget ljud/ljus:</strong> Läsaren är offline. Tillämpa "tekniken fungerar inte"-proceduren nedan.</li>
+          <li>Passageraren håller kortet <strong>stilla 1–2 sekunder</strong> — kortet ska inte röra vid plexiglaset snett.</li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>QR-skanner (App / pappersbiljett)</h4>
+        <ul>
+          <li>Be passageraren hålla telefonen <strong>rakt och stabilt</strong>, ca 15 cm från skannern.</li>
+          <li><strong>Grön ram + pip:</strong> Biljetten godkänd.</li>
+          <li><strong>Röd ram:</strong> Biljett används för fel zon, utgången eller redan använd.</li>
+          <li>QR-skanner kräver bra ljus — be passageraren höja skärmens ljusstyrka om den inte läser.</li>
+          <li>Pappersbiljett med streckkod: håll mot ljuset om bläcket är svagt.</li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>Hållplatsvaliderare (BRT — Linje 1 &amp; 2)</h4>
+        <ul>
+          <li>Resenärer validerar <strong>på perrongen</strong> innan ombordstigning — du kontrollerar inte biljett vid framsätet.</li>
+          <li>Om resenär missar att validera: hänvisa till nästa hållplats med fungerande validerare.</li>
+          <li>Vid larm om ogiltigt kort på perrongen: det är <strong>hållpersonalens ansvar</strong> — du stannar inte trafiken.</li>
+          <li>Rapportera defekta hållplatsvaliderare till trafikledning omedelbart.</li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>Ombordköp — Swish &amp; kontant</h4>
+        <ul>
+          <li>Swish: passageraren skickar till <strong>Länstrafikens Swish-nummer</strong> (sitter uppsatt i fordonet).</li>
+          <li>Kontant: ge aldrig växel om du inte har växelkassa — det är valfritt per fordon.</li>
+          <li>Kvitto: digital biljett skickas via SMS/e-post automatiskt vid Swish-köp.</li>
+          <li>Om kortterminal finns ombord: fungerar som vanlig kortbetalning, betalning bekräftas med kvitto på skärmen.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sec-lbl">Bemöta resenärer — Professionellt uppträdande</div>
+    <div class="rule-grid">
+      <div class="rule-card">
+        <h4>Grundtonen — Alltid</h4>
+        <ul>
+          <li><strong>Neutral och respektfull</strong> — sänk aldrig tonen, oavsett hur resenären beter sig.</li>
+          <li>Säg aldrig "Du har fel" — säg "Biljetten godkänns tyvärr inte, kan jag hjälpa dig att lösa det?"</li>
+          <li>Håll ögonkontakt kort, le — det sänker konfliktnivån direkt.</li>
+          <li>Tala <strong>tydligt och lagom högt</strong> — äldre resenärer och de med hörapparat behöver det.</li>
+          <li>Presentera dig inte per namn om du inte vill — "Chaufförs-ID" sitter synligt på din uniform.</li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>Tillgänglighet &amp; särskilda behov</h4>
+        <ul>
+          <li><strong>Rullstol/rollator:</strong> Fäll upp knäskydd, aktivera ramp/kneeling utan att resenären behöver be.</li>
+          <li><strong>Synskadad med ledarhund:</strong> Fråga "Vill du ha hjälp att hitta sittplats?" — anpassa efter svar.</li>
+          <li><strong>Barnvagn:</strong> Hjälp med dörren om trängt, men aktivera inte rampen om det inte behövs.</li>
+          <li><strong>Hörselnedsättning:</strong> Vänd dig mot personen, tala långsamt, peka gärna på information.</li>
+          <li>Håll aldrig åter avgång om resenären med rullstol inte hunnit säkra sig — säkerheten avgör tidsplan.</li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>Klagomål &amp; kunder som vet bättre</h4>
+        <ul>
+          <li>Ta klagomålet på allvar — säg "Jag förstår att det är frustrerande."</li>
+          <li>Du behöver inte försvara Länstrafikens prisnivå eller policy — hänvisa till kundtjänst 0771-22 40 00.</li>
+          <li>Argumentera aldrig om reglerna har ändrats — du tillämpar gällande taxa, punkt.</li>
+          <li>Vid klagomål på din körning: lyssna, bekräfta, erbjud incidentrapport om de vill.</li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>Språk &amp; kommunikation</h4>
+        <ul>
+          <li>Många passagerare talar inte svenska — grundfraser på <strong>engelska</strong> räcker långt: "Ticket, please." / "This stop: [namn]."</li>
+          <li>Peka på biljettpris på displayen om kommunikationen inte fungerar.</li>
+          <li>Undvik att ropa in hållplatsnamnet — det sköts automatiskt av högtalaranläggningen.</li>
+          <li>Vid onödigt lång konversation: "Jag behöver fokusera på körningen, men trafikledning kan hjälpa dig."</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sec-lbl">När tekniken inte fungerar — Felsökning &amp; fallback</div>
+    <div class="rule-grid">
+      <div class="rule-card">
+        <h4>Biljettläsaren fungerar inte</h4>
+        <ul>
+          <li><strong>Steg 1:</strong> Kontrollera om läsarens statuslampor lyser — ingen belysning = strömförlust.</li>
+          <li><strong>Steg 2:</strong> Rapportera till trafikledning: "Fordon X, läsaren offline, behöver instruktioner."</li>
+          <li><strong>Steg 3:</strong> Trafikledning beslutar om du ska tillämpa <em>fri påstigning</em> eller manuell notering.</li>
+          <li><strong>Steg 4:</strong> Om fri påstigning godkänns — öppna dörrar normalt, notera antal passagerare i körjournal.</li>
+          <li>Byt <strong>aldrig</strong> ut eller återstarta hårdvara själv — kontakta tekniker via trafikledning.</li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>AVLS / GPS tappar kontakt</h4>
+        <ul>
+          <li>AVLS-fel syns som <strong>blinkande varningssymbol</strong> i förarskärmen.</li>
+          <li>Kör enligt tidtabell som vanligt — resenärernas app uppdateras inte, men trafiken kör.</li>
+          <li>Rapportera till trafikledning vid start av nästa tur: "AVLS offline sedan [tidpunkt], fordon [nr]."</li>
+          <li>Prioriteringssignaler (grön våg) kan sluta fungera vid AVLS-bortfall — kör som vanliga signaler.</li>
+          <li>Notera alla Reglerhållplatser manuellt i körjournalen om AVLS är nere.</li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>Passagerar-appen visar fel info</h4>
+        <ul>
+          <li>Resenären visar en biljett som "verkar ha slutat fungera" — testa validera igen, ofta ett timeout-problem.</li>
+          <li>App visar fel avgångstid: AVLS-störning. Informera kort: "Realtidsdata kan vara fördröjd, vi kör enligt tidtabell."</li>
+          <li>Passageraren hävdar att appen sa att turen är inställd (trots att du kör): trafikledning skickar felaktig AVLS-info — fortsätt turen, informera trafikledning.</li>
+          <li>Du ansvarar aldrig för appens innehåll — det är Länstrafikens kundtjänst som hanterar det.</li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>Fordonsdator / förarskärm hänger sig</h4>
+        <ul>
+          <li>Pröva <strong>mjuk omstart</strong> via menyval i förarskärmen (utan att stänga av fordonet).</li>
+          <li>Kör aldrig utan fungerande AVLS och biljettläsare på längre turlistor — kontakta trafikledning för utbytesfordon.</li>
+          <li>Dörrautomatik: om dörrsystemet krånglar, använd manuellt dörrgrepp och rapportera direkt.</li>
+          <li>Nödutgången vid brand/olycka är <strong>alltid mekanisk</strong> — fungerar utan el.</li>
+          <li>Fyllt i incidentrapport senast vid turslutet för alla tekniska fel som påverkat passagerarna.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sec-lbl">Lexikon — Förkortningar och termer du möter</div>
+    <div class="dt-wrap">
+      <table class="dt">
+        <thead>
+          <tr><th>Förkortning / Term</th><th>Utskrivet</th><th>Vad det betyder i praktiken</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>AVLS</strong></td><td>Automatiskt Fordons­lokaliseringssystem</td><td>GPS-system i bussen som rapporterar position och tid till trafikledning och passagerar-appar i realtid.</td></tr>
+          <tr><td><strong>BRT</strong></td><td>Bus Rapid Transit</td><td>Stadsbussar med egna körfält, plattformsvalidering och hög turtäthet — i Örebro: linje 1 och 2 i centrala stråket.</td></tr>
+          <tr><td><strong>YKB</strong></td><td>Yrkeskompetensbevis</td><td>Obligatorisk fortbildningscertifiering för förare av buss i yrkestrafik. Förnyas var 5:e år med 35 timmars utbildning.</td></tr>
+          <tr><td><strong>Reglerhållplats / R</strong></td><td>Reglerhållplats (◆ R på kartan)</td><td>Hållplats där avgångstid i tidtabellen är bindande — du väntar till exakt avgångstid, går inte dessförinnan.</td></tr>
+          <tr><td><strong>USÖ</strong></td><td>Universitetssjukhuset Örebro</td><td>Regionens akutsjukhus på Södra Grev Rosengatan. Hög in-/avstigningsvolym dygnet runt, hållplats "USÖ M-huset".</td></tr>
+          <tr><td><strong>HUB</strong></td><td>Bytespunkt / nod</td><td>Hållplats där flera linjer möts och resenärer byter buss — på kartan markerad med cyan ring. Viktig för tidsprecision.</td></tr>
+          <tr><td><strong>VA-arbete</strong></td><td>Vatten- och avloppsarbete</td><td>Grävarbeten i gata som leder till tillfälliga hållplatsflyttningar eller omledningar — se aktuella störningar.</td></tr>
+          <tr><td><strong>Svealandstrafiken / SvTåg</strong></td><td>Svealandstrafiken AB</td><td>Trafikutövaren som kör stadsbussarna i Örebro på uppdrag av Länstrafiken. Din arbetsgivare om du kör stadstrafik i Örebro.</td></tr>
+          <tr><td><strong>Länstrafiken / LLT</strong></td><td>Länstrafiken i Örebro län AB</td><td>Beställaren av kollektivtrafiken — äger tidtabellerna, taxan och resenärskommunikationen. Ej din direkta arbetsgivare.</td></tr>
+          <tr><td><strong>Terminus / Ändhållplats</strong></td><td>Linjens ändstation</td><td>Sista hållplatsen i en riktning. Här vänder fordonet och startar retur. Ofta en Reglerhållplats med uppehåll.</td></tr>
+          <tr><td><strong>Depot / Depå</strong></td><td>Bussgarage / Uppställningsplats</td><td>Nobina Örebros centralgarage på Industrigatan — dit bussen körs efter sista tur och därifrån den hämtas vid turstarten.</td></tr>
+          <tr><td><strong>GTFS</strong></td><td>General Transit Feed Specification</td><td>Öppet dataformat från Google/Trafiklab som innehåller hållplatser, rutter och tidtabeller — källan till kartorna i detta verktyg.</td></tr>
+          <tr><td><strong>GTFS-RT</strong></td><td>GTFS Realtime</td><td>Realtidstillägg till GTFS: fordonspositioner, förseningar och driftstörningar — används för att visa aktiva störningar på kartan.</td></tr>
+          <tr><td><strong>Flex 10 / Flex 40</strong></td><td>Klippkort med 10 resp. 40 resor</td><td>Förbetalt reskort med ett fast antal resor. Valideras per resa, saldo minskar. Gäller i Örebro stads taxezon.</td></tr>
+          <tr><td><strong>Trafikledning / TL</strong></td><td>Trafikledningscentralen</td><td>Nobinas operativa centrum som koordinerar alla bussar i realtid. Ring alltid TL vid avvikelse, haveri eller incident.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sec-lbl">Snabbreferens — Viktiga nummer</div>
+    <div class="dt-wrap">
+      <table class="dt">
+        <thead>
+          <tr><th>Funktion</th><th>Vad det gäller</th><th>Prioritet</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>112</strong></td><td>Olycka, brand, medicinsk nödsituation, allvarligt hot</td><td><span class="badge badge-red">SOS</span></td></tr>
+          <tr><td><strong>Trafikledning</strong></td><td>Fordonshaveri, omledning, incidenter, avvikelser</td><td><span class="badge badge-amber">ALLTID</span></td></tr>
+          <tr><td><strong>Länstrafiken kundtjänst</strong></td><td>Passagerarfrågor om biljetter du inte kan besvara</td><td><span class="badge badge-cyan">INFO</span></td></tr>
+          <tr><td><strong>Fordonsverkstad</strong></td><td>Tekniska fel som inte stoppar trafiken</td><td><span class="badge badge-green">VID BEHOV</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+</div><!-- /page-content -->
+
+<!-- ── Scripts ───────────────────────────────────────────────────────────────── -->
+<script>
+// ── Tab navigation ─────────────────────────────────────────────────────────────
+function showTab(n) {
+  document.querySelectorAll('.bs-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.bs-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector('[data-line="'+n+'"]').classList.add('active');
+  document.getElementById('panel-'+n).classList.add('active');
+  // Init map if first open
+  setTimeout(function(){ initMap(n); }, 50);
+}
+
+// ── Map initialization ─────────────────────────────────────────────────────────
+var _maps = {};
+var MB_TOKEN = 'pk.eyJ1IjoiaWl2aWkiLCJhIjoiY211a'+'XFsOG52MDZ2cjJ3c2Y2cXB6czM5ZyJ9.0GvSIuE5Q2wvXhW4gAt5-Q';
+var OSM_TILE = 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=' + MB_TOKEN;
+var OSM_ATTR = '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+var DARK_TILE = 'https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}?access_token=' + MB_TOKEN;
+var DARK_ATTR = '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+
+function getTileUrl() {
+  var theme = document.documentElement.getAttribute('data-theme');
+  return theme === 'light' ? OSM_TILE : DARK_TILE;
+}
+function getTileAttr() {
+  var theme = document.documentElement.getAttribute('data-theme');
+  return theme === 'light' ? OSM_ATTR : DARK_ATTR;
+}
+
+var LINE_COLORS = { 0:'#00d4ff', 1:'#e74c3c', 2:'#27ae60', 3:'#2980b9', 4:'#e67e22', 5:'#8e44ad', 6:'#16a085', 7:'#d35400' };
+
+// Route coordinate data (approximate, based on Länstrafiken/OSM)
+var ROUTES = {
+  0: { // Overview — all routes
+    center: [59.2748, 15.2115], zoom: 12
+  },
+  1: {
+    center: [59.2790, 15.2250], zoom: 13,
+    stops: [
+      {n:'Vivalla centrum',       c:[59.3042, 15.1510]},
+      {n:'Poesigatan',            c:[59.2985, 15.1622]},
+      {n:'Boglundsängen',         c:[59.2952, 15.1735]},
+      {n:'Baronbackarna ⚠',       c:[59.2920, 15.1800]},
+      {n:'Lövstagatan',           c:[59.2875, 15.1895]},
+      {n:'Tegnérlunden ⚠',        c:[59.2800, 15.2012]},
+      {n:'Örebro Resecentrum ★',  c:[59.2748, 15.2115], hub:true},
+      {n:'Kulturkvarteret',       c:[59.2735, 15.2148]},
+      {n:'Våghustorget',          c:[59.2718, 15.2198]},
+      {n:'Eyra Idrottsområde',    c:[59.2695, 15.2278]},
+      {n:'Österplan',             c:[59.2668, 15.2340]},
+      {n:'Almbyplan',             c:[59.2638, 15.2490]},
+      {n:'Tybble centrum',        c:[59.2610, 15.2648]},
+      {n:'Universitetsplatsen',   c:[59.2585, 15.2870]},
+      {n:'Barkvägen',             c:[59.2562, 15.2930]},
+      {n:'Björkrisvägen',         c:[59.2548, 15.2975]},
+      {n:'Brickebacken centrum',  c:[59.2535, 15.3010]},
+      {n:'Tallrisvägen',          c:[59.2520, 15.3050]}
+    ]
+  },
+  2: {
+    center: [59.2760, 15.2100], zoom: 13,
+    stops: [
+      {n:'Mellringestaden',       c:[59.2948, 15.1592]},
+      {n:'Mellringevägen',        c:[59.2930, 15.1625]},
+      {n:'Trollbärsgatan',        c:[59.2912, 15.1660]},
+      {n:'Varberga västra',       c:[59.2905, 15.1688]},
+      {n:'Varberga torg',         c:[59.2895, 15.1715]},
+      {n:'Apelvägen',             c:[59.2878, 15.1790]},
+      {n:'Markbackens centrum',   c:[59.2858, 15.1878]},
+      {n:'Västerplan',            c:[59.2800, 15.2048]},
+      {n:'Örebro Resecentrum ★',  c:[59.2748, 15.2115], hub:true},
+      {n:'Tegnérlunden ⚠',        c:[59.2800, 15.2012]},
+      {n:'Österplan',             c:[59.2668, 15.2340]},
+      {n:'Eyra Idrottsområde',    c:[59.2695, 15.2278]},
+      {n:'Våghustorget',          c:[59.2718, 15.2198]},
+      {n:'Kulturkvarteret',       c:[59.2735, 15.2148]},
+      {n:'Almbyplan',             c:[59.2638, 15.2490]},
+      {n:'Tybble centrum',        c:[59.2610, 15.2648]},
+      {n:'Universitetsplatsen',   c:[59.2585, 15.2870]}
+    ]
+  },
+  3: {
+    center: [59.2910, 15.1980], zoom: 12,
+    stops: [
+      {n:'Stödjegränd (Solhaga)', c:[59.2730, 15.2490]},
+      {n:'Rosta gärde',           c:[59.2700, 15.2352]},
+      {n:'Rosta centrum',         c:[59.2695, 15.2310]},
+      {n:'Trumpetaregatan',       c:[59.2710, 15.2268]},
+      {n:'Hagagatan',             c:[59.2718, 15.2220]},
+      {n:'Kulturkvarteret',       c:[59.2735, 15.2148]},
+      {n:'Örebro Resecentrum ★',  c:[59.2748, 15.2115], hub:true},
+      {n:'Tegnérlunden ⚠',        c:[59.2800, 15.2012]},
+      {n:'Lövstagatan',           c:[59.2875, 15.1895]},
+      {n:'Baronbackarna ⚠',       c:[59.2920, 15.1800]},
+      {n:'Boglundsängen',         c:[59.2952, 15.1735]},
+      {n:'Poesigatan',            c:[59.2985, 15.1622]},
+      {n:'Vivalla centrum',       c:[59.3042, 15.1510]},
+      {n:'Trädgårdarna',          c:[59.3092, 15.1478]},
+      {n:'Lundby centrum',        c:[59.3132, 15.1375]},
+      {n:'Skiffergatan',          c:[59.3178, 15.1342]}
+    ]
+  },
+  4: {
+    center: [59.2780, 15.2150], zoom: 12,
+    stops: [
+      {n:'Björkbacksgatan',       c:[59.3182, 15.1902]},
+      {n:'Grenadjärvallen',       c:[59.3052, 15.1952]},
+      {n:'Honolulugatan',         c:[59.2875, 15.1968]},
+      {n:'USÖ M-huset ✚',         c:[59.2808, 15.1968]},
+      {n:'Örebro Resecentrum ★',  c:[59.2748, 15.2115], hub:true},
+      {n:'Kulturkvarteret',       c:[59.2735, 15.2148]},
+      {n:'Svartå Bangata',        c:[59.2722, 15.2242]},
+      {n:'Idrottsvägen',          c:[59.2700, 15.2332]},
+      {n:'Aspholmsvägen',         c:[59.2685, 15.2402]},
+      {n:'Skvadronvägen',         c:[59.2670, 15.2422]},
+      {n:'Boställsvägen',         c:[59.2660, 15.2410]},
+      {n:'Elementvägen',          c:[59.2645, 15.2398]},
+      {n:'Nasta',                 c:[59.2632, 15.2360]},
+      {n:'Brunnsparken',          c:[59.2618, 15.2310]},
+      {n:'Korskyrkan',            c:[59.2608, 15.2280]},
+      {n:'Sanatorievägen',        c:[59.2600, 15.2258]},
+      {n:'Hjälmarberget',         c:[59.2592, 15.2240]},
+      {n:'Rabattvägen',           c:[59.2582, 15.2228]},
+      {n:'Marieberg köpcentrum',  c:[59.2575, 15.2238]},
+      {n:'Kundvägen',             c:[59.2565, 15.2215]}
+    ]
+  },
+  5: {
+    center: [59.2980, 15.2100], zoom: 12,
+    stops: [
+      {n:'Hovsta station',        c:[59.3245, 15.1645]},
+      {n:'Hovsta centrum',        c:[59.3122, 15.1782]},
+      {n:'Förlunda',              c:[59.3042, 15.1912]},
+      {n:'Lillåns Center',        c:[59.3020, 15.1978]},
+      {n:'Lillåns skola',         c:[59.2958, 15.2038]},
+      {n:'Krematoriet',           c:[59.2895, 15.2148]},
+      {n:'Norra Kyrkogården',     c:[59.2858, 15.2198]},
+      {n:'Hagaby',                c:[59.2835, 15.2228]},
+      {n:'Svampen',               c:[59.2820, 15.2258]},
+      {n:'Örebro Resecentrum ★',  c:[59.2748, 15.2115], hub:true},
+      {n:'Slottet',               c:[59.2738, 15.2138]},
+      {n:'Stortorget',            c:[59.2722, 15.2168]},
+      {n:'Drottninggatan',        c:[59.2705, 15.2185]},
+      {n:'Olof Palmes torg',      c:[59.2690, 15.2202]},
+      {n:'Sveaparken',            c:[59.2678, 15.2228]},
+      {n:'Södra Allén',           c:[59.2662, 15.2268]},
+      {n:'Tullängsgymnasiet',     c:[59.2648, 15.2358]},
+      {n:'Loftbodsgatan',         c:[59.2638, 15.2448]},
+      {n:'Fatbursgatan',          c:[59.2628, 15.2520]},
+      {n:'Termikgatan',           c:[59.2620, 15.2568]},
+      {n:'Karlsdalsallén',        c:[59.2615, 15.2605]},
+      {n:'Lavendelvägen',         c:[59.2612, 15.2635]},
+      {n:'Tybble vårdcentral',    c:[59.2608, 15.2652]}
+    ]
+  },
+  6: {
+    center: [59.2720, 15.2200], zoom: 13,
+    stops: [
+      {n:'Universitetsplatsen',           c:[59.2585, 15.2870]},
+      {n:'Fakultetsgatan',                c:[59.2600, 15.2798]},
+      {n:'Tybblelundsvägen',              c:[59.2620, 15.2715]},
+      {n:'Tärnvägen',                     c:[59.2642, 15.2628]},
+      {n:'Valsaregatan',                  c:[59.2658, 15.2545]},
+      {n:'Holländaregatan',               c:[59.2672, 15.2462]},
+      {n:'Ingenjörsgatan',                c:[59.2682, 15.2398]},
+      {n:'Salsmästaregatan',              c:[59.2688, 15.2352]},
+      {n:'Hagmarksrondellen',             c:[59.2695, 15.2310]},
+      {n:'Wadköpingsvägen',               c:[59.2740, 15.2058]},
+      {n:'USÖ slussen ✚',                 c:[59.2758, 15.1968]},
+      {n:'USÖ akuten ✚',                  c:[59.2785, 15.1972]},
+      {n:'USÖ H-huset ✚',                 c:[59.2798, 15.1985]},
+      {n:'USÖ Södra Grev Rosengatan ✚',   c:[59.2745, 15.1980]},
+      {n:'Örebro Resecentrum ★',          c:[59.2748, 15.2115], hub:true},
+      {n:'Kulturkvarteret',               c:[59.2735, 15.2148]},
+      {n:'Gumaeliusskolan',               c:[59.2720, 15.2202]},
+      {n:'Slåttervägen',                  c:[59.2710, 15.2098]},
+      {n:'Tengvallsgatan',                c:[59.2702, 15.2052]},
+      {n:'Tornfalkgatan',                 c:[59.2695, 15.2005]},
+      {n:'Haga centrum',                  c:[59.2688, 15.1962]},
+      {n:'Domherregatan',                 c:[59.2682, 15.1918]},
+      {n:'Vaktelvägen',                   c:[59.2680, 15.1882]},
+      {n:'Korsbandsgatan',                c:[59.2678, 15.1845]},
+      {n:'Postmästaregatan',              c:[59.2678, 15.1818]},
+      {n:'Posthornsgatan',                c:[59.2678, 15.1800]}
+    ]
+  },
+  7: {
+    center: [59.2720, 15.2250], zoom: 12,
+    stops: [
+      {n:'Lillåns vårdcentral',   c:[59.2875, 15.2468]},
+      {n:'Rödklövervägen',        c:[59.2858, 15.2428]},
+      {n:'Stenbovägen',           c:[59.2848, 15.2410]},
+      {n:'Östanbergsvägen',       c:[59.2840, 15.2392]},
+      {n:'Klockarängsvägen',      c:[59.2835, 15.2380]},
+      {n:'Vinterhagsvägen',       c:[59.2832, 15.2368]},
+      {n:'Ligustervägen',         c:[59.2828, 15.2352]},
+      {n:'Tujavägen',             c:[59.2825, 15.2340]},
+      {n:'Kornellvägen',          c:[59.2822, 15.2325]},
+      {n:'Skottvägen',            c:[59.2818, 15.2312]},
+      {n:'Karosserigatan',        c:[59.2815, 15.2300]},
+      {n:'Nolhagavägen',          c:[59.2812, 15.2282]},
+      {n:'Ringstorpsvägen',       c:[59.2810, 15.2270]},
+      {n:'Svampen östra',         c:[59.2828, 15.2355]},
+      {n:'Pettersberg',           c:[59.2800, 15.2262]},
+      {n:'Norrby',                c:[59.2790, 15.2228]},
+      {n:'Phragménsvägen',        c:[59.2780, 15.2198]},
+      {n:'Längbrotorg',           c:[59.2775, 15.2188]},
+      {n:'Bromsplan',             c:[59.2762, 15.2158]},
+      {n:'Olaus Petrikyrkan',     c:[59.2752, 15.2132]},
+      {n:'Örebro Resecentrum ★',  c:[59.2748, 15.2115], hub:true},
+      {n:'Slottet',               c:[59.2738, 15.2138]},
+      {n:'Stortorget',            c:[59.2722, 15.2168]},
+      {n:'Drottninggatan',        c:[59.2705, 15.2185]},
+      {n:'Olof Palmes torg',      c:[59.2690, 15.2202]},
+      {n:'Kungsgatan',            c:[59.2672, 15.2222]},
+      {n:'Klerkgatan',            c:[59.2652, 15.2255]},
+      {n:'Storbackavägen',        c:[59.2632, 15.2290]},
+      {n:'Halltorpsvägen',        c:[59.2605, 15.2348]},
+      {n:'Adolfsbergsskolan',     c:[59.2578, 15.2412]},
+      {n:'Stentorpsvägen',        c:[59.2558, 15.2452]},
+      {n:'Motorpsvägen',          c:[59.2542, 15.2480]},
+      {n:'Ekeskolan',             c:[59.2528, 15.2510]},
+      {n:'Drottningholm',         c:[59.2515, 15.2545]},
+      {n:'Mobackavägen',          c:[59.2508, 15.2575]},
+      {n:'Dr Kristinas väg',      c:[59.2504, 15.2598]},
+      {n:'Torells väg',           c:[59.2502, 15.2615]},
+      {n:'Mariebergsvägen',       c:[59.2500, 15.2628]},
+      {n:'Bäcklunda',             c:[59.2498, 15.2638]},
+      {n:'Paketvägen',            c:[59.2496, 15.2648]},
+      {n:'Brännbollsplan',        c:[59.2494, 15.2655]},
+      {n:'Viktor Dahléns väg',    c:[59.2492, 15.2665]}
+    ]
+  }
+};
+
+function makeMarker(latlng, color, name, isHub, lineNum, isTimingPoint) {
+  var cleanName = name.replace(' ★','').replace(' ⚠','');
+  var html;
+  if (isTimingPoint) {
+    // Diamond + R label for reglerhållplatser
+    html = '<div style="position:relative;width:18px;height:18px;cursor:pointer">'
+         + '<div style="position:absolute;inset:0;background:#ffb700;border:2px solid rgba(255,255,255,0.95);'
+         + 'box-shadow:0 0 9px #ffb700bb;transform:rotate(45deg)"></div>'
+         + '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;'
+         + 'font-size:9px;font-weight:900;color:#000;line-height:1;z-index:1">R</div>'
+         + '</div>';
+  } else {
+    var size = isHub ? 14 : 10;
+    html = '<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+color
+         + ';border:2px solid rgba(255,255,255,0.8);box-shadow:0 0 6px '+color+'80;cursor:pointer"></div>';
+  }
+  var icon = L.divIcon({className:'', html:html, iconSize:[isTimingPoint?18:isHub?14:10, isTimingPoint?18:isHub?14:10], iconAnchor:[isTimingPoint?9:isHub?7:5, isTimingPoint?9:isHub?7:5]});
+
+  var hubBadge  = '<span style="display:inline-block;background:#00d4ff;color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;margin-left:4px">HUB</span>';
+  var tpBadge   = '<span style="display:inline-block;background:#ffb700;color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;margin-left:4px">REGLER</span>';
+  var lineBadge = lineNum ? '<span style="display:inline-block;background:'+color+';color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;margin-left:4px">L'+lineNum+'</span>' : '';
+  var badge = isHub ? hubBadge : (isTimingPoint ? tpBadge : lineBadge);
+
+  // Lines that serve this stop
+  var stopId = arguments[6] || null;
+  var linesBadges = '';
+  if (stopId && STOP_LINES[stopId]) {
+    linesBadges = '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px">';
+    STOP_LINES[stopId].forEach(function(ln) {
+      linesBadges += '<span style="display:inline-block;width:26px;height:26px;border-radius:50%;background:'
+        +LINE_COLORS[ln]+';text-align:center;line-height:26px;font-size:13px;font-weight:700;color:#fff">'+ln+'</span>';
+    });
+    linesBadges += '</div>';
+  }
+
+  // Alert for this stop
+  var alertHtml = '';
+  if (stopId && ALERT_STOPS[stopId]) {
+    alertHtml = '<div style="margin-top:6px;font-size:11px;color:#e74c3c;background:rgba(231,76,60,0.08);'
+      +'border:1px solid rgba(231,76,60,0.3);border-radius:4px;padding:4px 6px">⚠ '+ALERT_STOPS[stopId]+'</div>';
+  }
+
+  // Mapbox satellite image of stop (bird's eye)
+  var isMob = window.innerWidth < 600;
+  var imgW = isMob ? 280 : 400, imgH = isMob ? 150 : 220;
+  var imgHtml = '<img src="https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/'
+    +latlng[1]+','+latlng[0]+',17,0/'+imgW+'x'+imgH+'?access_token='+MB_TOKEN
+    +'" style="width:100%;border-radius:6px;margin-bottom:8px;display:block" loading="lazy">';
+
+  var popW = isMob ? 'min(280px,calc(100vw - 32px))' : '340px';
+  var popup = '<div style="font-family:Inter,sans-serif;min-width:'+popW+';max-width:'+(isMob?'calc(100vw - 24px)':'440px')+'">'
+    + imgHtml
+    + '<div style="font-size:16px;font-weight:700;color:#111;margin-bottom:5px">'+cleanName+badge+'</div>'
+    + linesBadges
+    + alertHtml
+    + '<a href="https://maps.google.com/?q='+latlng[0]+','+latlng[1]+'&layer=c&cbll='+latlng[0]+','+latlng[1]+'" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:#888;margin-top:8px;display:inline-flex;align-items:center;gap:4px;text-decoration:none;cursor:pointer" title="Öppna Google Street View">'
+    + '<svg viewBox="0 0 12 12" fill="none" stroke="#888" stroke-width="1.2" width="11" height="11"><path d="M6 1C3.8 1 2 2.8 2 5c0 3 4 6 4 6s4-3 4-6c0-2.2-1.8-4-4-4z" opacity=".7"/><circle cx="6" cy="5" r="1.5"/></svg>'
+    + latlng[0].toFixed(5)+', '+latlng[1].toFixed(5)
+    + '<svg viewBox="0 0 10 10" fill="none" stroke="#888" stroke-width="1.3" width="9" height="9" style="opacity:.55"><path d="M6 1h3v3M9 1L4.5 5.5M2 4H1v5h5V8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    + 'Street View'
+    + '</a>'
+    + '</div>';
+  return L.marker(latlng, {icon:icon})
+    .bindTooltip(cleanName + (isTimingPoint?' ◆ Reglerhållplats':''), {direction:'top', offset:[0,-6], className:'lb-map-tooltip'})
+    .bindPopup(popup, {maxWidth:460, className:'lb-map-popup'+(isTimingPoint?' lb-map-popup-tp':'')});
+}
+
+function initMap(n) {
+  if (_maps[n]) return;
+  var containerId = n === 0 ? 'map-overview' : 'map-' + n;
+  var el = document.getElementById(containerId);
+  if (!el) return;
+
+  var tileUrl = getTileUrl();
+  var tileAttr = getTileAttr();
+
+  if (n === 0) {
+    // Overview map — all lines with exact GTFS shapes
+    var m = L.map('map-overview', {zoomControl:true}).setView([59.2790, 15.2150], 12);
+    L.tileLayer(tileUrl, {attribution:tileAttr, maxZoom:18, tileSize:512, zoomOffset:-1}).addTo(m);
+    var lineNums = [1,2,3,4,5,6,7];
+    lineNums.forEach(function(ln){
+      var shapes = (typeof ROUTE_SHAPES !== 'undefined') && ROUTE_SHAPES[ln];
+      if (shapes) {
+        if (shapes['0']) L.polyline(shapes['0'], {color:LINE_COLORS[ln], weight:4, opacity:0.85}).addTo(m);
+        if (shapes['1']) L.polyline(shapes['1'], {color:LINE_COLORS[ln], weight:2.5, opacity:0.55}).addTo(m);
+      }
+      // Terminus markers from real GTFS stops
+      var gtfsStops = (typeof STOP_DATA !== 'undefined') && STOP_DATA[ln] && STOP_DATA[ln]['0'];
+      if (gtfsStops && gtfsStops.length) {
+        var first = gtfsStops[0], last = gtfsStops[gtfsStops.length-1];
+        makeMarker(first.c, LINE_COLORS[ln], first.n, false, ln).addTo(m);
+        makeMarker(last.c, LINE_COLORS[ln], last.n, false, ln).addTo(m);
+      }
+    });
+    makeMarker([59.2748,15.2115], '#00d4ff', 'Örebro Resecentrum', true).addTo(m);
+    addDepotMarkers(m);
+    addCenterButton(m, null, 12, [59.2790, 15.2150]);
+    _maps[0] = m;
+    return;
+  }
+
+  var r = ROUTES[n];
+  if (!r) return;
+  var m = L.map('map-' + n, {zoomControl:true}).setView(r.center, r.zoom);
+  L.tileLayer(tileUrl, {attribution:tileAttr, maxZoom:18, tileSize:512, zoomOffset:-1}).addTo(m);
+  var color = LINE_COLORS[n];
+
+  // Draw exact GTFS shape if available, else fall back to stop-to-stop
+  var shapes = (typeof ROUTE_SHAPES !== 'undefined') && ROUTE_SHAPES[n];
+  var routeBounds = null;
+  if (shapes) {
+    if (shapes['0']) { var pl = L.polyline(shapes['0'], {color:color, weight:5, opacity:0.9}).addTo(m); routeBounds = pl.getBounds(); }
+    if (shapes['1']) L.polyline(shapes['1'], {color:color, weight:3, opacity:0.5, dashArray:'6 4'}).addTo(m);
+  } else if (r.stops) {
+    L.polyline(r.stops.map(function(s){return s.c;}), {color:color, weight:5, opacity:0.85}).addTo(m);
+  }
+
+  // Stop markers from real GTFS coordinates (dir 0), fallback to ROUTES
+  var gtfsStops = (typeof STOP_DATA !== 'undefined') && STOP_DATA[n] && STOP_DATA[n]['0'];
+  var stopList = gtfsStops || (r.stops || []);
+  stopList.forEach(function(s, i){
+    var isFirst = i === 0, isLast = i === stopList.length - 1;
+    var isHub = /resecentrum/i.test(s.n);
+    var isTp  = !!s.tp;
+    var c = isHub ? '#00d4ff' : (isFirst || isLast) ? color : 'rgba(255,255,255,0.75)';
+    makeMarker(s.c, c, s.n, isHub, n, isTp, s.id || null).addTo(m);
+  });
+  addDepotMarkers(m);
+  addCenterButton(m, routeBounds, r.zoom, r.center);
+  _maps[n] = m;
+}
+
+function updateShapes() {
+  var btn = document.getElementById('btn-update-shapes');
+  var status = document.getElementById('shapes-status');
+  btn.disabled = true;
+  btn.textContent = 'Hämtar…';
+  status.style.display = 'block';
+  status.textContent = 'Hämtar GTFS från Trafiklab…';
+  fetch('http://100.79.170.93:8010/run-orebro-shapes')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d.ok) {
+        status.style.color = 'var(--cyan)';
+        status.textContent = 'Klart — ladda om sidan för att se uppdaterade rutter.';
+      } else {
+        status.style.color = '#e74c3c';
+        status.textContent = 'Fel: ' + (d.stderr || d.stdout || 'okänt fel');
+      }
+      btn.disabled = false;
+      btn.textContent = 'Uppdatera rutter';
+    })
+    .catch(function(e){
+      status.style.color = '#e74c3c';
+      status.textContent = 'Kunde inte nå runner: ' + e.message;
+      btn.disabled = false;
+      btn.textContent = 'Uppdatera rutter';
+    });
+}
+
+// ── Depots & rest areas ───────────────────────────────────────────────────────
+// Coordinates approximate — verify with operations manager
+var DEPOTS = [
+  { n:'Nobina Örebro — Centralgaraget', c:[59.2586, 15.1682], type:'depot',
+    desc:'Huvuddepå. Bussar signeras på/av här. Adress: Industrigatan, Örebro.' },
+  { n:'Personalvila — Örebro Resecentrum', c:[59.2745, 15.2108], type:'rest',
+    desc:'Rastmöjlighet vid Resecentrum. Pentry och toalett inne i stationsbyggnaden.' },
+  { n:'Personalvila — Vivalla centrum', c:[59.3042, 15.1510], type:'rest',
+    desc:'Terminus linje 1/3. Rastmöjlighet. Tid för rast enligt körplanen.' }
+];
+
+function makeDepotMarker(depot) {
+  var isDepot = depot.type === 'depot';
+  var bg = isDepot ? '#9b59b6' : '#16a085';
+  var label = isDepot ? '🏭' : '☕';
+  var html = '<div style="width:26px;height:26px;border-radius:5px;background:'+bg+';border:2px solid rgba(255,255,255,0.9);'
+    +'box-shadow:0 0 10px '+bg+'99;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer">'+label+'</div>';
+  var icon = L.divIcon({className:'', html:html, iconSize:[26,26], iconAnchor:[13,13]});
+  var typeLabel = isDepot ? 'DEPÅ' : 'PERSONALVILA';
+  var badgeColor = isDepot ? '#9b59b6' : '#16a085';
+  var popup = '<div style="font-family:Inter,sans-serif;min-width:220px">'
+    +'<div style="font-size:14px;font-weight:700;color:#111;margin-bottom:4px">'+depot.n
+    +'<span style="display:inline-block;background:'+badgeColor+';color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;margin-left:6px">'+typeLabel+'</span></div>'
+    +'<div style="font-size:12px;color:#555;margin-bottom:4px">'+depot.desc+'</div>'
+    +'<div style="font-size:10px;color:#aaa">'+depot.c[0].toFixed(5)+', '+depot.c[1].toFixed(5)+'<br><em>⚠ Koordinater preliminära</em></div>'
+    +'</div>';
+  return L.marker(depot.c, {icon:icon})
+    .bindTooltip(depot.n, {direction:'top', offset:[0,-8], className:'lb-map-tooltip'})
+    .bindPopup(popup, {maxWidth:300, className:'lb-map-popup'});
+}
+
+function addDepotMarkers(map) {
+  DEPOTS.forEach(function(d){ makeDepotMarker(d).addTo(map); });
+}
+
+// ── Center / fit-bounds button ────────────────────────────────────────────────
+function addCenterButton(map, bounds, zoom, center) {
+  var btn = L.control({position:'topright'});
+  btn.onAdd = function() {
+    var div = L.DomUtil.create('div','leaflet-bar');
+    div.innerHTML = '<a href="#" title="Centrera kartan" style="font-size:16px;line-height:26px;display:block;width:26px;text-align:center;background:rgba(5,15,30,0.88);color:#00d4ff;border:none">⊕</a>';
+    L.DomEvent.on(div, 'click', function(e) {
+      L.DomEvent.preventDefault(e);
+      if (bounds && bounds.isValid()) { map.fitBounds(bounds, {padding:[24,24]}); }
+      else { map.setView(center, zoom); }
+    });
+    return div;
+  };
+  btn.addTo(map);
+}
+
+// ── STOP_LINES: stop_id → [line, line, …] ────────────────────────────────────
+var STOP_LINES = {};
+function buildStopLines() {
+  if (typeof STOP_DATA === 'undefined') return;
+  for (var ln = 1; ln <= 7; ln++) {
+    var dirs = STOP_DATA[ln] || {};
+    Object.keys(dirs).forEach(function(d) {
+      (dirs[d] || []).forEach(function(s) {
+        if (!s.id) return;
+        if (!STOP_LINES[s.id]) STOP_LINES[s.id] = [];
+        if (STOP_LINES[s.id].indexOf(ln) < 0) STOP_LINES[s.id].push(ln);
+      });
+    });
+  }
+}
+
+// ── Alerts ────────────────────────────────────────────────────────────────────
+var ALERT_STOPS = {}; // stop_id → header
+function loadAlerts() {
+  fetch('http://100.79.170.93:8010/orebro-alerts')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (!d.ok) return;
+      d.alerts.forEach(function(a){
+        a.stops.forEach(function(sid){ ALERT_STOPS[sid] = a.header; });
+      });
+    }).catch(function(){});
+}
+
+// ── Study mode ────────────────────────────────────────────────────────────────
+var SS = { line:0, dir:'0', stops:[], idx:0, sMap:null, curM:null, routeL:null, dotMs:[] };
+
+function switchStudyDir(dir) {
+  var other = dir==='0'?'1':'0';
+  var sd = typeof STOP_DATA!=='undefined' && STOP_DATA[SS.line];
+  if (!sd || !sd[dir] || !sd[dir].length) return; // dir not available for this line
+  document.querySelectorAll('.study-dir-btn').forEach(function(b){
+    b.classList.toggle('active', b.dataset.dir===dir);
+  });
+  openStudy(SS.line, dir);
+}
+
+function openStudy(lineNum, dir) {
+  dir = dir || '0';
+  var sd = typeof STOP_DATA!=='undefined' && STOP_DATA[lineNum];
+  // Try requested dir, fall back to '0'
+  var stops = sd && (sd[dir] || sd['0']);
+  if (!stops || !stops.length) { alert('Hållplatsdata saknas — ladda om sidan.'); return; }
+  if (!sd[dir]) dir = '0';
+  SS.line = lineNum; SS.dir = dir; SS.stops = stops; SS.idx = 0;
+  SS.cumTimes = computeCumTimes(stops, lineNum);
+
+  // Update direction toggle buttons
+  document.querySelectorAll('.study-dir-btn').forEach(function(b){
+    b.classList.toggle('active', b.dataset.dir===dir);
+    // Disable if that direction has no data
+    var available = sd && sd[b.dataset.dir] && sd[b.dataset.dir].length > 0;
+    b.disabled = !available;
+    b.style.opacity = available ? '' : '0.3';
+  });
+
+  var color = LINE_COLORS[lineNum] || '#888';
+  var arrow = dir==='0' ? '→' : '←';
+  document.getElementById('study-line-info').innerHTML =
+    '<span style="display:inline-block;width:20px;height:20px;border-radius:50%;background:'+color+
+    ';text-align:center;line-height:20px;font-size:11px;font-weight:700;color:#fff;margin-right:8px;vertical-align:middle">'+lineNum+'</span>'+
+    arrow+' '+stops[0].n+' → '+stops[stops.length-1].n;
+
+  document.querySelectorAll('.bs-panel').forEach(function(p){ p.style.display='none'; });
+  document.querySelector('.bs-tabs').style.visibility='hidden';
+  document.getElementById('study-overlay').style.display='flex';
+
+  setTimeout(function(){
+    if (!SS.sMap) {
+      SS.sMap = L.map('study-map',{zoomControl:true}).setView(stops[0].c,15);
+      L.tileLayer(getTileUrl(),{attribution:getTileAttr(),maxZoom:18,tileSize:512,zoomOffset:-1}).addTo(SS.sMap);
+    } else { SS.sMap.invalidateSize(); }
+    // Force Leaflet to recalculate container size after flex layout settles
+    setTimeout(function(){ SS.sMap.invalidateSize(); }, 50);
+    setTimeout(function(){ SS.sMap.invalidateSize(); SS.sMap.setView(SS.stops[0].c, 15); }, 200);
+    if (SS.routeL) SS.sMap.removeLayer(SS.routeL);
+    var sh = typeof ROUTE_SHAPES!=='undefined' && ROUTE_SHAPES[lineNum];
+    if (sh && sh[dir]) SS.routeL = L.polyline(sh[dir],{color:color,weight:5,opacity:.9}).addTo(SS.sMap);
+    SS.dotMs.forEach(function(m){ SS.sMap.removeLayer(m); }); SS.dotMs=[];
+    stops.forEach(function(s,i){
+      var c2 = s.tp?'#ffb700': ALERT_STOPS[s.id]?'#e74c3c':'rgba(255,255,255,0.35)';
+      var m = L.circleMarker(s.c,{radius:4,fillColor:c2,fillOpacity:1,color:'#fff',weight:1.5}).addTo(SS.sMap);
+      m.on('click',function(){ studyGoTo(i); });
+      SS.dotMs.push(m);
+    });
+    studyGoTo(0);
+  },120);
+}
+
+function haversineDist(a, b) {
+  var R = 6371, dLat = (b[0]-a[0])*Math.PI/180, dLon = (b[1]-a[1])*Math.PI/180;
+  var x = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(a[0]*Math.PI/180)*Math.cos(b[0]*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
+}
+function stopTravelMin(a, b, lineNum) {
+  if (!a || !b || !a.c || !b.c) return null;
+  var isBRT = !!(LINE_DOOR_POLICY && LINE_DOOR_POLICY[lineNum] === 'alla');
+  var kmPerMin = isBRT ? 0.333 : 0.283;
+  var dist = haversineDist(a.c, b.c);
+  var dwell = (a.tp && !isBRT) ? 0.5 : 0;
+  return Math.max(1, Math.round(dist / kmPerMin + dwell));
+}
+
+function computeCumTimes(stops, lineNum) {
+  var cum = [0];
+  for (var i = 1; i < stops.length; i++) {
+    cum.push(cum[i-1] + (stopTravelMin(stops[i-1], stops[i], lineNum) || 1));
+  }
+  return cum;
+}
+
+function panToStop(lineNum, lat, lon) {
+  var m = _maps[lineNum];
+  if (m) m.setView([lat, lon], 17, {animate:true, duration:.4});
+}
+
+function openStudyStandalone() {
+  window.open('orebro_studera.html?line='+(SS.line||1)+'&dir='+(SS.dir||'0')+'&stop='+(SS.idx||0), '_blank');
+}
+
+var STOP_PEAKS = {
+  'Resecentrum':       {rush:[[7,0,9,0],[15,0,18,0]]},
+  'Vivalla':           {rush:[[7,0,9,0],[15,0,18,0]]},
+  'Brickebacken':      {rush:[[7,0,9,0],[15,0,18,0]]},
+  'Mellringe':         {rush:[[7,0,9,0],[15,0,18,0]]},
+  'Universitetsplatsen':{rush:[[8,0,9,30],[15,30,17,30]]},
+  'Tybble':            {rush:[[7,30,9,0],[15,0,17,30]]},
+  'Markbacken':        {rush:[[7,0,9,0],[15,0,17,30]]},
+  'Hovsta':            {rush:[[6,30,8,0],[15,0,17,0]]},
+  'Mosås':             {rush:[[6,30,8,0],[15,0,17,0]]},
+  'Marieberg':         {busy:[[9,0,12,0],[13,0,15,0]]},
+  'Sjukhus':           {busy:[[7,0,9,0],[11,0,13,0],[15,0,18,0]]},
+  'USÖ':               {busy:[[7,0,9,0],[11,0,13,0],[15,0,18,0]]}
+};
+
+function checkStopPeak(stopName) {
+  var h = new Date().getHours(), m = new Date().getMinutes();
+  var tot = h*60+m;
+  for (var key in STOP_PEAKS) {
+    if (stopName.toLowerCase().indexOf(key.toLowerCase()) !== -1) {
+      var p = STOP_PEAKS[key];
+      if (p.rush && p.rush.some(function(r){ return tot>=r[0]*60+r[1]&&tot<=r[2]*60+r[3]; }))
+        return {level:'rush', msg:'⚡ Rusningstrafik nu — hög belastning förväntas'};
+      if (p.busy && p.busy.some(function(r){ return tot>=r[0]*60+r[1]&&tot<=r[2]*60+r[3]; }))
+        return {level:'busy', msg:'↑ Förhöjd trafik — var förberedd'};
+    }
+  }
+  return null;
+}
+
+function studyGoTo(idx) {
+  var stops = SS.stops;
+  if (idx < 0 || idx >= stops.length) return;
+  SS.idx = idx;
+  var s = stops[idx], prev = stops[idx-1], next = stops[idx+1];
+
+  // Map: update current marker and pan
+  if (SS.curM) SS.sMap.removeLayer(SS.curM);
+  SS.curM = L.circleMarker(s.c, {radius:12, fillColor:LINE_COLORS[SS.line], fillOpacity:1, color:'#fff', weight:3}).addTo(SS.sMap);
+  SS.sMap.setView(s.c, 16, {animate:true, duration:.4});
+
+  // Nav bar
+  document.getElementById('study-prev-btn').disabled = idx === 0;
+  document.getElementById('study-next-btn').disabled = idx === stops.length-1;
+  document.getElementById('study-progress-fill').style.width = Math.round(idx/(stops.length-1)*100)+'%';
+  document.getElementById('study-stop-num').textContent = (idx+1)+'/'+stops.length;
+  document.getElementById('study-counter').textContent = (idx+1)+' / '+stops.length;
+  // Nav stop names
+  var snPrev = document.getElementById('snav-prev');
+  var snCur  = document.getElementById('snav-cur');
+  var snNext = document.getElementById('snav-next');
+  if (snPrev) snPrev.textContent = prev ? prev.n : '';
+  if (snCur)  snCur.textContent  = s.n;
+  if (snNext) snNext.textContent = next ? next.n : '';
+
+  // Satellite image
+  var satImg = document.getElementById('study-sat-img');
+  if (satImg && s.c) {
+    satImg.style.opacity = '0.4';
+    satImg.onload = function(){ this.style.opacity='1'; };
+    var _satW = Math.min(Math.round(window.innerWidth * 0.6), 600), _satH = Math.round(_satW * 0.38);
+    satImg.src = 'https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/'
+      + s.c[1]+','+s.c[0]+',17,0/'+_satW+'x'+_satH+'?access_token='+MB_TOKEN;
+  }
+  var svLink = document.getElementById('study-sat-sv-link');
+  if (svLink && s.c) svLink.href = 'https://maps.google.com/?q='+s.c[0]+','+s.c[1]+'&layer=c&cbll='+s.c[0]+','+s.c[1];
+
+  // Info panel — stop name
+  document.getElementById('sip-name').textContent = s.n;
+
+  // Info panel — badges
+  var isBRT = !!(LINE_DOOR_POLICY && LINE_DOOR_POLICY[SS.line] === 'alla');
+  var hasAlert = !!ALERT_STOPS[s.id];
+  var badges = '';
+  if (s.tp)     badges += '<span class="sip-badge tp">◆ REGLERHÅLLPLATS</span>';
+  if (hasAlert) badges += '<span class="sip-badge alert">⚠ TRAFIKSTÖRNING</span>';
+  if (isBRT)    badges += '<span class="sip-badge brt">≡ ALLA DÖRRAR</span>';
+  document.getElementById('sip-badges').innerHTML = badges;
+
+  // Info panel — peak warning
+  var peakInfo = checkStopPeak(s.n);
+  var peakEl = document.getElementById('sip-peak');
+  if (peakEl) {
+    peakEl.className = peakInfo ? peakInfo.level : '';
+    peakEl.textContent = peakInfo ? peakInfo.msg : '';
+  }
+
+  // Info panel — prev/next timing + cumulative time
+  var tPrev = stopTravelMin(prev, s, SS.line), tNext = stopTravelMin(s, next, SS.line);
+  var cumMin = SS.cumTimes ? SS.cumTimes[idx] : 0;
+  var cumStr = cumMin > 0 ? '<div id="sip-cumtime">+'+cumMin+' min från start</div>' : '';
+  document.getElementById('sip-timing').innerHTML =
+    '<div class="sip-tbox"><div class="sip-tdir">◀ FÖREGÅENDE</div>'+
+    '<div class="sip-tstop">'+(prev ? prev.n : '— Startpunkt —')+'</div>'+
+    (tPrev ? '<div class="sip-tmin">~'+tPrev+' min sedan</div>' : '')+
+    '</div>'+
+    '<div class="sip-tbox"><div class="sip-tdir">▶ NÄSTA</div>'+
+    '<div class="sip-tstop">'+(next ? next.n : '— Ändhållplats —')+'</div>'+
+    (tNext ? '<div class="sip-tmin">~'+tNext+' min dit</div>' : '')+
+    cumStr+
+    '</div>';
+
+  // Info panel — door policy
+  var doorEl = document.getElementById('sip-door');
+  if (isBRT) {
+    doorEl.className = 'alla';
+    doorEl.textContent = '≡ ALLA DÖRRAR — Kunden validerar vid plattformen, ej ombord';
+  } else if (s.tp) {
+    doorEl.className = 'regler';
+    doorEl.textContent = '↑ FRAMDÖRREN · REGLERING — Stanna vid exakt avgångstid, invänta om tidigt';
+  } else {
+    doorEl.className = 'fram';
+    doorEl.textContent = '↑ FRAMDÖRREN — Kunden visar biljett vid påstigning';
+  }
+
+  // Info panel — stop notes from PANEL_NOTES
+  var pn = PANEL_NOTES[SS.line] && PANEL_NOTES[SS.line][SS.dir];
+  var note = '';
+  if (pn && pn.viktiga) {
+    pn.viktiga.forEach(function(v) {
+      var vLow = v.n.toLowerCase(), sLow = s.n.toLowerCase();
+      if (sLow.indexOf(vLow.split(' ')[0]) !== -1 || vLow.indexOf(sLow.split(' ')[0]) !== -1) note = v.t;
+    });
+  }
+  if (hasAlert && ALERT_STOPS[s.id]) note = (note ? note+' · ' : '') + '⚠ '+ALERT_STOPS[s.id];
+  document.getElementById('sip-notes').textContent = note;
+}
+
+function studyStep(d) { studyGoTo(SS.idx+d); }
+
+function closeStudy() {
+  document.getElementById('study-overlay').style.display='none';
+  document.querySelector('.bs-tabs').style.visibility='';
+  document.querySelectorAll('.bs-panel').forEach(function(p){ p.style.display=''; });
+  showTab(SS.line);
+}
+
+// ── Door policy & panel notes per line ────────────────────────────────────────
+// Lines 1 & 2 = BRT (alla dörrar); 3–7 = framdörren; tp=true always = reglering
+var LINE_DOOR_POLICY = { 1:'alla', 2:'alla' }; // rest defaults to 'fram'
+
+var PANEL_NOTES = {
+  1: {
+    '0': {
+      viktiga: [
+        {n:'Örebro Resecentrum', t:'Stor bytespunkt — tåg, buss, taxi'},
+        {n:'Tybble centrum', t:'Tät bebyggelse, hög stigning morgon/kväll'},
+        {n:'Universitetsplatsen', t:'Örebro Universitet — studenter'},
+        {n:'Vivalla centrum', t:'Ändhållplats, hög belastning rusningstid'}
+      ],
+      tips: [
+        'Alla dörrar öppnas — kunden validerar vid plattformen',
+        'Håll turtäthet 10 min — avvikelse rapporteras',
+        'Toppbelastning 07–09 och 15–18',
+        'VA-arbete: Baronbackarna tillfälligt förflyttad, Tegnérlunden → Tegnérgatan'
+      ]
+    },
+    '1': {
+      viktiga: [
+        {n:'Brickebacken centrum', t:'Avhållsplats öst, lägre belastning'},
+        {n:'Universitetsplatsen', t:'Utbytespunkt studenter'},
+        {n:'Örebro Resecentrum', t:'Central bytespunkt'},
+        {n:'Vivalla centrum', t:'Ändhållplats väst'}
+      ],
+      tips: [
+        'Returresan — håll tidplan extra noga',
+        'Alla dörrar öppnas på hela sträckan (BRT)',
+        'Sen kväll: sänkt beläggning, håll tidplan'
+      ]
+    }
+  },
+  2: {
+    '0': {
+      viktiga: [
+        {n:'Mellringestaden', t:'Startpunkt nordväst'},
+        {n:'Örebro Resecentrum', t:'Central bytespunkt'},
+        {n:'Universitetsplatsen', t:'Ändhållplats — stor stigning under terminstid'}
+      ],
+      tips: [
+        'Alla dörrar öppnas (BRT) — validering sker vid plattform',
+        'Markbacken/Varberga: tätbefolkat, räkna med stigning',
+        'Rusningstid kräver god framförhållning vid hållplatserna'
+      ]
+    },
+    '1': {
+      viktiga: [
+        {n:'Universitetsplatsen', t:'Avgångspunkt, studenter'},
+        {n:'Örebro Resecentrum', t:'Stor av-/påstigning'},
+        {n:'Mellringestaden', t:'Ändhållplats'}
+      ],
+      tips: [
+        'Returresan — kväll/natt lägre beläggning',
+        'Alla dörrar öppnas hela sträckan'
+      ]
+    }
+  },
+  3: {
+    '0': {
+      viktiga: [
+        {n:'Rosta centrum', t:'Lokalt centrum, regelbunden stigning'},
+        {n:'Örebro Resecentrum', t:'Central bytespunkt'},
+        {n:'Vivalla centrum', t:'Tätbefolkat, hög stigning'},
+        {n:'Lundby centrum', t:'Norra Örebro, ändhållplats'}
+      ],
+      tips: [
+        'Diagonalrutt — linjebyte i centrum, håll koll på hållplatsordning',
+        'Hagagatan/Rosta: smalare gator, låg hastighet',
+        'Framdörren — passagerare visar biljett vid påstigning',
+        'Reglerhållplats: stanna fullt, reglera passagerarflödet'
+      ]
+    },
+    '1': {
+      viktiga: [
+        {n:'Lundby centrum', t:'Avgångspunkt norra Örebro'},
+        {n:'Vivalla centrum', t:'Hög stigning rusningstid'},
+        {n:'Örebro Resecentrum', t:'Bytespunkt'},
+        {n:'Rosta centrum', t:'Stigning/avstigning öst'}
+      ],
+      tips: [
+        'Riktning söderut — Rosta sist, Solhaga ändhållplats',
+        'Framdörren på hela sträckan',
+        'Varsam körning i Hagagatan'
+      ]
+    }
+  },
+  4: {
+    '0': {
+      viktiga: [
+        {n:'USÖ M-huset', t:'Universitetssjukhuset — sjukhushållplats, handikapprampen PÅ'},
+        {n:'Örebro Resecentrum', t:'Central bytespunkt'},
+        {n:'Marieberg köpcentrum', t:'Handel, hög belastning helg'}
+      ],
+      tips: [
+        'USÖ: ha extra tid — patienter med rörelsehinder, rullstolar',
+        'Aktivera ramp vid behov — tryck RAMP-knappen',
+        'Framdörren — kontrollera biljett vid påstigning',
+        'Nasta-sträckan: industriområde, inga spontanpassagerare'
+      ]
+    },
+    '1': {
+      viktiga: [
+        {n:'Marieberg köpcentrum', t:'Avgångspunkt söder'},
+        {n:'Örebro Resecentrum', t:'Bytespunkt'},
+        {n:'USÖ M-huset', t:'Sjukhushållplats — extra tid'}
+      ],
+      tips: [
+        'Returresa norrut — USÖ har hög in-/utflöde dagtid',
+        'Rynningeåsen: lugnt bostadsområde, låg belastning'
+      ]
+    }
+  },
+  5: {
+    '0': {
+      viktiga: [
+        {n:'Tybble vårdcentral', t:'Startpunkt, låg belastning tidig morgon'},
+        {n:'Tullängsgymnasiet', t:'Gymnasium — massiv stigning 07:45–08:10'},
+        {n:'Örebro Resecentrum', t:'Central bytespunkt'},
+        {n:'Stortorget', t:'Centralt torg, hög stigning — gångfartszon'},
+        {n:'Svampen', t:'Örebros vattentorn, landmärke'},
+        {n:'Lillåns Center', t:'Lokalt centrum, skolbarn'},
+        {n:'Hovsta station', t:'Anslutning till tåg — bytespunkt, ändhållplats'}
+      ],
+      tips: [
+        '29 hållplatser — planera paustid noggrant',
+        'Hovsta–Lillåns: halvlandsortsmiljö, håll tidplan',
+        'Tullängsgymnasiet: massiv stigning 07:45–08:10',
+        'Stortorget: gångfartszon, extrem försiktighet',
+        'Framdörren — reglerhållplatser: stanna fullt'
+      ]
+    },
+    '1': {
+      viktiga: [
+        {n:'Hovsta station', t:'Avgångspunkt — invänta tåganslutning'},
+        {n:'Lillåns Center', t:'Lokalt centrum'},
+        {n:'Svampen', t:'Landmärke, orienteringspunkt'},
+        {n:'Stortorget', t:'Hög av-/påstigning, gångfartszon'},
+        {n:'Tullängsgymnasiet', t:'Skolslut: massiv avg. 15:30–16:00'},
+        {n:'Tybble vårdcentral', t:'Ändhållplats'}
+      ],
+      tips: [
+        'Returresan — Hovsta som utgångspunkt',
+        'Invänta eventuell tåganslutning i Hovsta',
+        'Skolslut: trängt vid Tullängsgymnasiet 15:30–16:00',
+        'Framdörren hela sträckan'
+      ]
+    }
+  },
+  6: {
+    '0': {
+      viktiga: [
+        {n:'Björkhaga', t:'Bostadsområde väst, startpunkt'},
+        {n:'USÖ akuten', t:'Sjukhushållplats — ha ramp redo'},
+        {n:'Haga centrum', t:'Lokalt centrum'},
+        {n:'Örebro Resecentrum', t:'Central bytespunkt'},
+        {n:'Universitetsplatsen', t:'Ändhållplats — studenter'}
+      ],
+      tips: [
+        'USÖ akuten: ramp vid behov, extra tid för patienter',
+        'Framdörren — reglerhållplatser: stanna fullt, reglera',
+        'Haga: smalare gator, håll hastighetsgränsen'
+      ]
+    },
+    '1': {
+      viktiga: [
+        {n:'Universitetsplatsen', t:'Avgångspunkt, studenter'},
+        {n:'Örebro Resecentrum', t:'Bytespunkt'},
+        {n:'USÖ akuten', t:'Sjukhushållplats'},
+        {n:'Björkhaga', t:'Ändhållplats väst'}
+      ],
+      tips: [
+        'Returresan västerut — Haga dagtid lugnare',
+        'Framdörren hela sträckan'
+      ]
+    }
+  },
+  7: {
+    '0': {
+      viktiga: [
+        {n:'Lillån', t:'Startpunkt norrut'},
+        {n:'Örebro Resecentrum', t:'Stor bytespunkt mitt på sträckan'},
+        {n:'Pettersberg', t:'Tätbefolkat bostadsområde'},
+        {n:'Adolfsberg', t:'Bostadsområde söder'},
+        {n:'Mosås', t:'Ändhållplats söder — lång rutt'}
+      ],
+      tips: [
+        '42 hållplatser — längsta sträckan, planera pauser',
+        'Pettersberg/Adolfsberg: hög stigning rusningstid',
+        'Framdörren — kontrollera biljett vid reglerhållplats',
+        'Lång sträcka: kolla fordonsstatus (bränsle/laddning) innan avgång'
+      ]
+    },
+    '1': {
+      viktiga: [
+        {n:'Mosås', t:'Avgångspunkt söder'},
+        {n:'Adolfsberg', t:'Bostadsområde, stigning'},
+        {n:'Örebro Resecentrum', t:'Central bytespunkt'},
+        {n:'Lillån', t:'Ändhållplats norrut'}
+      ],
+      tips: [
+        'Returresan norrut — invänta passagerare från Resecentrum',
+        'Kväll: glesare, håll exakt tidplan'
+      ]
+    }
+  }
+};
+
+// ── Direction toggle for line panels ──────────────────────────────────────────
+var PANEL_DIR = {};
+
+function renderPanelStops(lineNum, dir) {
+  PANEL_DIR[lineNum] = dir;
+  document.querySelectorAll('#panel-'+lineNum+' .dir-btn').forEach(function(b){
+    b.classList.toggle('active', b.dataset.dir===dir);
+  });
+  var sd = typeof STOP_DATA!=='undefined' && STOP_DATA[lineNum];
+  if (!sd || !sd[dir] || !sd[dir].length) return;
+  var stops = sd[dir];
+  var color = LINE_COLORS[lineNum] || '#888';
+  var arrow = dir==='0' ? '→' : '←';
+  var isBRT = !!(LINE_DOOR_POLICY && LINE_DOOR_POLICY[lineNum] === 'alla');
+
+  // ── Left column: stop list with door badges ──
+  var col = document.querySelector('#panel-'+lineNum+' .stops-col');
+  if (col) {
+    var hdr = '<div class="stops-col-hdr" style="background:'+color+'">'+arrow+
+      ' Riktning: '+stops[0].n+' → '+stops[stops.length-1].n+'</div>';
+    var items = '';
+    stops.forEach(function(s,i){
+      var isFirst=i===0, isLast=i===stops.length-1;
+      var isCentral = s.n&&(s.n.toLowerCase().includes('resecentrum')||s.n.toLowerCase().includes('universitetet'));
+      var hasAlert = ALERT_STOPS&&!!ALERT_STOPS[s.id];
+      var cls = 'stop-item'+(isFirst?' stop-first':isLast?' stop-last':isCentral?' stop-center':'');
+      var numStyle = isFirst||isLast?'background:'+color:'';
+      if (isCentral&&!isFirst&&!isLast) numStyle='background:rgba(0,212,255,.15);color:var(--cyan)';
+      var doorBadge = '';
+      if (isBRT) {
+        doorBadge = '<span class="stop-note" style="color:#00d4ff;font-size:9px">≡ ALLA</span>';
+      } else if (s.tp) {
+        doorBadge = '<span class="stop-note" style="color:#ffb700">◆ R · FRAMDÖRR</span>';
+      }
+      items += '<div class="'+cls+'" onclick="panToStop('+lineNum+','+s.c[0]+','+s.c[1]+')" title="Visa på karta">'+
+        '<div class="stop-num"'+(numStyle?' style="'+numStyle+'"':'')+'>'+(i+1)+'</div>'+
+        '<span class="stop-name"'+(s.tp?' style="font-weight:600"':'')+'>'+(isFirst||isLast?'<strong>':'')+s.n+(isFirst||isLast?'</strong>':'')+'</span>'+
+        doorBadge+
+        (hasAlert?'<span class="stop-note" style="color:#ff5555">⚠ STÖRN.</span>':'')+
+        '</div>';
+    });
+    col.innerHTML = hdr + items;
+  }
+
+  // ── Right column: direction-specific info ──
+  var cols = document.querySelectorAll('#panel-'+lineNum+' .stops-col');
+  var infoCol = cols[1];
+  if (!infoCol) return;
+
+  var notes = (PANEL_NOTES[lineNum] && PANEL_NOTES[lineNum][dir]) || {};
+  var viktiga = notes.viktiga || [];
+  var tips = notes.tips || [];
+
+  // Alert banner: check if any stop on this direction has a live alert
+  var alertMsg = '';
+  stops.forEach(function(s){ if (ALERT_STOPS[s.id] && !alertMsg) alertMsg = ALERT_STOPS[s.id]; });
+
+  var alertBanner = alertMsg
+    ? '<div style="background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.4);border-radius:6px;padding:9px 12px;margin:0 0 12px;display:flex;gap:8px;align-items:flex-start">'
+      +'<span style="font-size:15px;flex-shrink:0">⚠</span>'
+      +'<div><div style="font-size:11px;font-weight:800;color:#ff5555;letter-spacing:.06em;margin-bottom:2px">TRAFIKSTÖRNING</div>'
+      +'<div style="font-size:12px;color:#ffaaaa">'+alertMsg+'</div></div></div>'
+    : '';
+
+  // Door rule legend
+  var doorRule = isBRT
+    ? '<div style="background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);border-radius:4px;padding:7px 10px;margin-bottom:10px;font-size:12px;color:var(--cyan)">'
+      +'<strong>≡ ALLA DÖRRAR</strong> — Citylinjen BRT · Kunden validerar vid plattformen</div>'
+    : '<div style="background:rgba(255,183,0,.07);border:1px solid rgba(255,183,0,.2);border-radius:4px;padding:7px 10px;margin-bottom:10px;font-size:12px;color:rgba(255,220,120,0.9)">'
+      +'<strong>↑ FRAMDÖRREN</strong> — Kunden visar biljett vid påstigning · <span style="color:#ffb700">◆ R</span> = Reglerhållplats</div>';
+
+  var viktHtml = '';
+  if (viktiga.length) {
+    viktHtml = '<div class="card-title" style="color:'+color+';margin-bottom:6px">Viktiga hållplatser</div><ul style="font-size:12px;color:var(--text);padding-left:16px;margin:0 0 12px">'
+      + viktiga.map(function(v){ return '<li><strong>'+v.n+'</strong> — '+v.t+'</li>'; }).join('')
+      + '</ul>';
+  }
+
+  var tipsHtml = '';
+  if (tips.length) {
+    tipsHtml = '<div class="card-title" style="color:'+color+';margin-bottom:6px">Chaufförstips — Linje '+lineNum+'</div><ul style="font-size:12px;color:var(--text);padding-left:16px;margin:0">'
+      + tips.map(function(t){ return '<li>'+t+'</li>'; }).join('')
+      + '</ul>';
+  }
+
+  infoCol.innerHTML =
+    '<div class="stops-col-hdr" style="background:rgba('+hexToRgb(color)+',0.75)">'+arrow+
+    ' RIKTNING: '+stops[0].n.toUpperCase()+' → '+stops[stops.length-1].n.toUpperCase()+'</div>'+
+    '<div style="padding:12px">'+alertBanner+doorRule+viktHtml+tipsHtml+'</div>';
+}
+
+function hexToRgb(hex) {
+  var r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return r+','+g+','+b;
+}
+
+// ── Alert modal ───────────────────────────────────────────────────────────────
+function openAlertModal(el) {
+  var body = el.dataset.detail || el.querySelector('div:last-child')?.innerHTML || el.textContent;
+  var title = el.dataset.title || 'Trafikstörning';
+  document.getElementById('alert-modal-body').innerHTML = body;
+  document.getElementById('alert-modal').classList.add('open');
+}
+function closeAlertModal() {
+  document.getElementById('alert-modal').classList.remove('open');
+}
+
+// ── Lathund topic filter ───────────────────────────────────────────────────────
+var LATH_TOPIC_MAP = {
+  'Skiftstart':              'skiftstart',
+  'Biljetter':               'biljetter',
+  'Trivselregler':           'regler',
+  'Verktygslåda':            'teknik',
+  'Citylinjen':              'teknik',
+  'Aktuella driftstörningar':'drift',
+  'Validatorer':             'biljetter',
+  'Bemöta resenärer':        'regler',
+  'tekniken inte fungerar':  'teknik',
+  'Lexikon':                 'referens',
+  'Snabbreferens':           'referens'
+};
+
+function initLathFilter() {
+  var p9 = document.getElementById('panel-9');
+  if (!p9) return;
+  p9.querySelectorAll('.sec-lbl').forEach(function(lbl) {
+    var txt = lbl.textContent;
+    for (var key in LATH_TOPIC_MAP) {
+      if (txt.indexOf(key) !== -1) { lbl.dataset.topic = LATH_TOPIC_MAP[key]; break; }
+    }
+  });
+}
+
+function filterLath(topic) {
+  document.querySelectorAll('.lath-fb').forEach(function(b){
+    b.classList.toggle('active', b.dataset.topic === topic);
+  });
+  var lbls = document.querySelectorAll('#panel-9 .sec-lbl');
+  lbls.forEach(function(lbl) {
+    var show = topic === 'alla' || lbl.dataset.topic === topic;
+    lbl.style.display = show ? '' : 'none';
+    var next = lbl.nextElementSibling;
+    while (next && !next.classList.contains('sec-lbl') && next.id !== 'lath-filter') {
+      next.style.display = show ? '' : 'none';
+      next = next.nextElementSibling;
+    }
+  });
+}
+
+// ── Init overview map + wiring ─────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function(){
+  setTimeout(function(){ initMap(0); }, 200);
+  buildStopLines();
+  loadAlerts();
+  initLathFilter();
+  // Add direction toggles + "Studera rutten" button to each line header
+  for (var ln=1; ln<=7; ln++) {
+    var hdr = document.querySelector('#panel-'+ln+' .route-hdr');
+    if (!hdr) continue;
+    // Direction toggle row above stops-grid
+    var sg = document.querySelector('#panel-'+ln+' .stops-grid');
+    if (sg) {
+      var tw = document.createElement('div');
+      tw.className = 'dir-toggle-wrap';
+      (function(n){
+        tw.innerHTML =
+          '<button class="dir-btn active" data-dir="0" onclick="renderPanelStops('+n+',\'0\')">→ Riktning A</button>'+
+          '<button class="dir-btn" data-dir="1" onclick="renderPanelStops('+n+',\'1\')">← Riktning B</button>';
+      })(ln);
+      sg.parentNode.insertBefore(tw, sg);
+      // Init with dir 0 from GTFS
+      (function(n){ setTimeout(function(){ renderPanelStops(n,'0'); },300); })(ln);
+    }
+    // Study button
+    var btn = document.createElement('button');
+    btn.className='study-open-btn';
+    btn.textContent='▶ Studera rutten';
+    (function(n){ btn.onclick=function(){ openStudy(n, PANEL_DIR[n]||'0'); }; })(ln);
+    hdr.appendChild(btn);
+  }
+  // Keyboard nav in study mode
+  document.addEventListener('keydown',function(e){
+    if (document.getElementById('study-overlay').style.display==='none') return;
+    if (e.key==='ArrowRight'||e.key==='ArrowDown') studyStep(1);
+    if (e.key==='ArrowLeft'||e.key==='ArrowUp') studyStep(-1);
+    if (e.key==='Escape') closeStudy();
+  });
+});
+</script>
+
+<!-- ═══════════════════ KÖRLÄGE / STUDY OVERLAY ═══════════════════ -->
+<div id="study-overlay">
+  <div id="study-header">
+    <button id="study-back-btn" onclick="closeStudy()">← Tillbaka</button>
+    <div id="study-line-info"></div>
+    <div class="study-dir-btns">
+      <button class="study-dir-btn active" data-dir="0" onclick="switchStudyDir('0')">→ Riktning A</button>
+      <button class="study-dir-btn" data-dir="1" onclick="switchStudyDir('1')">← Riktning B</button>
+    </div>
+    <span id="study-counter"></span>
+  </div>
+
+  <div id="study-top">
+    <div id="study-sat-wrap">
+      <img id="study-sat-img" src="" alt="" loading="lazy">
+      <div id="study-sat-fade"></div>
+      <a id="study-sat-sv-link" href="#" target="_blank" rel="noopener noreferrer">Street View ↗</a>
+    </div>
+    <div id="study-info-panel">
+      <div id="sip-name"></div>
+      <div id="sip-badges"></div>
+      <div id="sip-peak"></div>
+      <div id="sip-timing"></div>
+      <div id="sip-door"></div>
+      <div id="sip-notes"></div>
+    </div>
+  </div>
+
+  <div id="study-nav-bar">
+    <button class="study-nav-btn" id="study-prev-btn" onclick="studyStep(-1)">◀</button>
+    <div id="study-nav-stops">
+      <span id="snav-prev" onclick="studyStep(-1)" title="Föregående hållplats"></span>
+      <span id="snav-cur"></span>
+      <span id="snav-next" onclick="studyStep(1)" title="Nästa hållplats"></span>
+    </div>
+    <div id="study-progress-wrap"><div id="study-progress-fill"></div></div>
+    <span id="study-stop-num"></span>
+    <button id="study-standalone-btn" onclick="openStudyStandalone()" title="Öppna i nytt fönster">⊞</button>
+    <button class="study-nav-btn" id="study-next-btn" onclick="studyStep(1)">▶</button>
+  </div>
+
+  <div id="study-map-wrap">
+    <div id="study-map"></div>
+  </div>
+</div>
+
+<!-- Alert modal -->
+<div id="alert-modal" onclick="closeAlertModal()">
+  <div id="alert-modal-box" onclick="event.stopPropagation()">
+    <div id="alert-modal-title">
+      <svg viewBox="0 0 16 16" fill="none" stroke="#ff5555" stroke-width="1.5" width="16" height="16"><polygon points="8,2 14,13 2,13"/><line x1="8" y1="6" x2="8" y2="9.5" stroke-linecap="round"/><circle cx="8" cy="11.2" r=".8" fill="#ff5555" stroke="none"/></svg>
+      TRAFIKSTÖRNING
+    </div>
+    <div id="alert-modal-body"></div>
+    <div id="alert-modal-footer">
+      <a id="alert-modal-link" href="https://www.lanstrafiken.se/trafikinfo" target="_blank" rel="noopener noreferrer">Länstrafikens trafikstörningssida ↗</a>
+      <button id="alert-modal-close" onclick="closeAlertModal()">Stäng</button>
+    </div>
+  </div>
+</div>
+
+<!-- GTFS exact route shapes -->
+<script src="orebro_shapes.js"></script>
+
+<!-- LogBook chrome -->
+<script>
+  var LB_ACTIVE = 'orebro-stadsbuss';
+</script>
+<script src="logbook_chrome.js"></script>
+
+</body>
+</html>

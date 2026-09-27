@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Örebro Stadsbussar — Chaufförsportal</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700;800&family=Orbitron:wght@400;700&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #040d1a;
+      --panel:  #071428;
+      --border: #0d2d50;
+      --cyan:   #00d4ff;
+      --text:   #d8eeff;
+      --muted:  #7ab0c8;
+      --l1:#e74c3c; --l2:#27ae60; --l3:#2980b9;
+      --l4:#e67e22; --l5:#8e44ad; --l6:#16a085; --l7:#d35400;
+    }
+
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: 'Exo 2', sans-serif; min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      padding: 28px 24px 20px;
+      background: linear-gradient(180deg, rgba(0,10,22,1) 0%, rgba(4,13,26,0) 100%);
+      text-align: center;
+    }
+    .logo-wrap {
+      display: inline-flex; align-items: center; gap: 14px; margin-bottom: 14px;
+    }
+    .bus-icon {
+      width: 56px; height: 56px; background: rgba(0,212,255,.1);
+      border: 1px solid rgba(0,212,255,.3); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    h1 {
+      font-family: 'Orbitron', monospace; font-size: clamp(20px,5vw,28px);
+      font-weight: 700; color: var(--cyan); letter-spacing: .1em; line-height: 1.2;
+    }
+    .subtitle {
+      font-size: 14px; color: var(--muted); margin-top: 6px; letter-spacing: .05em;
+    }
+
+    /* ── Divider ── */
+    .line-bar {
+      height: 1px; background: linear-gradient(to right, transparent, var(--border), transparent);
+      margin: 0 24px;
+    }
+
+    /* ── Live status strip ── */
+    #alert-strip {
+      display: none; background: rgba(255,170,0,.08); border-bottom: 1px solid rgba(255,170,0,.2);
+      padding: 9px 20px; font-size: 12px; color: #ffa700; text-align: center;
+    }
+    #alert-strip.visible { display: block; }
+
+    /* ── Main cards grid ── */
+    .cards-section {
+      flex: 1; padding: 28px 20px 36px; max-width: 860px; width: 100%; margin: 0 auto;
+    }
+    .cards-grid {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 28px;
+    }
+    @media(max-width:680px){ .cards-grid { grid-template-columns: 1fr; } }
+
+    .main-card {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+      padding: 24px 20px; cursor: pointer; transition: all .18s; text-decoration: none;
+      display: flex; flex-direction: column; gap: 14px; position: relative; overflow: hidden;
+      color: var(--text);
+    }
+    .main-card:hover { border-color: rgba(0,212,255,.4); transform: translateY(-3px); box-shadow: 0 8px 32px rgba(0,0,0,.4); }
+    .main-card::before {
+      content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity .18s;
+      background: linear-gradient(135deg, rgba(0,212,255,.06) 0%, transparent 60%);
+    }
+    .main-card:hover::before { opacity: 1; }
+    .main-card.guide::before { background: linear-gradient(135deg, rgba(0,212,255,.06) 0%, transparent 60%); }
+    .main-card.study::before { background: linear-gradient(135deg, rgba(39,174,96,.08) 0%, transparent 60%); }
+    .main-card.quiz::before  { background: linear-gradient(135deg, rgba(142,68,173,.08) 0%, transparent 60%); }
+    .main-card.guide { border-top: 3px solid var(--cyan); }
+    .main-card.study { border-top: 3px solid #27ae60; }
+    .main-card.quiz  { border-top: 3px solid #8e44ad; }
+
+    .card-icon {
+      width: 48px; height: 48px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .card-icon.guide { background: rgba(0,212,255,.1); }
+    .card-icon.study { background: rgba(39,174,96,.1); }
+    .card-icon.quiz  { background: rgba(142,68,173,.1); }
+    .card-label {
+      font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+    }
+    .card-label.guide { color: var(--cyan); }
+    .card-label.study { color: #27ae60; }
+    .card-label.quiz  { color: #9b59b6; }
+    .card-title { font-size: 18px; font-weight: 700; color: #fff; line-height: 1.2; }
+    .card-desc  { font-size: 13px; color: var(--muted); line-height: 1.55; flex: 1; }
+    .card-cta {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 700; padding: 8px 16px; border-radius: 6px;
+      border: 1px solid; transition: all .15s; align-self: flex-start;
+    }
+    .card-cta.guide { color: var(--cyan); border-color: rgba(0,212,255,.35); background: rgba(0,212,255,.08); }
+    .card-cta.study { color: #27ae60; border-color: rgba(39,174,96,.35); background: rgba(39,174,96,.08); }
+    .card-cta.quiz  { color: #9b59b6; border-color: rgba(142,68,173,.35); background: rgba(142,68,173,.08); }
+    .main-card:hover .card-cta { filter: brightness(1.2); }
+
+    /* ── Quick line selector ── */
+    .quick-section { margin-bottom: 0; }
+    .section-lbl {
+      font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 12px; padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .lines-grid {
+      display: grid; grid-template-columns: repeat(7,1fr); gap: 8px;
+    }
+    @media(max-width:480px){ .lines-grid { grid-template-columns: repeat(4,1fr); gap: 6px; } .line-tile-num { font-size: 18px; } }
+    @media(max-width:360px){ .cards-section { padding: 18px 12px 28px; } .main-card { padding: 18px 14px; } .logo-wrap { gap: 8px; } h1 { font-size: 17px; } }
+    .line-tile {
+      border-radius: 8px; padding: 12px 6px; text-align: center; cursor: pointer;
+      transition: all .15s; text-decoration: none; color: #fff;
+      border: 1px solid rgba(255,255,255,.1);
+    }
+    .line-tile:hover { transform: scale(1.05); filter: brightness(1.15); }
+    .line-tile-num { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+    .line-tile-name { font-size: 9px; opacity: .8; letter-spacing: .04em; line-height: 1.3; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center; padding: 18px; font-size: 11px; color: rgba(100,140,170,.5);
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: rgba(0,212,255,.4); text-decoration: none; }
+    footer a:hover { color: var(--cyan); }
+
+    /* ── Scan alert badge ── */
+    .new-badge {
+      display: inline-block; font-size: 9px; font-weight: 800; padding: 2px 6px;
+      border-radius: 3px; background: rgba(231,76,60,.2); color: #ff6655;
+      border: 1px solid rgba(231,76,60,.35); letter-spacing: .06em; vertical-align: middle;
+      margin-left: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Alert strip -->
+  <div id="alert-strip">
+    ⚠ Pågående driftstörningar — se guiden för detaljer
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="logo-wrap">
+      <div class="bus-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="1.5" width="30" height="30">
+          <rect x="1" y="5" width="18" height="13" rx="2.5"/>
+          <path d="M19 9h3v5h-3"/>
+          <circle cx="5.5" cy="18.5" r="2" fill="var(--cyan)" stroke="none" opacity=".8"/>
+          <circle cx="14.5" cy="18.5" r="2" fill="var(--cyan)" stroke="none" opacity=".8"/>
+          <line x1="3" y1="9" x2="17" y2="9" stroke-linecap="round" opacity=".4"/>
+          <line x1="8" y1="5" x2="8" y2="9" opacity=".4"/>
+          <line x1="12" y1="5" x2="12" y2="9" opacity=".4"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Örebro Stadsbussar</h1>
+        <div class="subtitle">Svealandstrafiken · Linjerna 1–7 · Chaufförsportal</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="line-bar"></div>
+
+  <!-- Main content -->
+  <div class="cards-section">
+
+    <!-- Three main cards -->
+    <div class="cards-grid">
+
+      <!-- Guide -->
+      <a class="main-card guide" href="orebro_stadsbuss.html?standalone" target="_blank">
+        <div class="card-icon guide">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="1.5" width="24" height="24">
+            <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+            <rect x="9" y="3" width="6" height="4" rx="1"/>
+            <line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/>
+          </svg>
+        </div>
+        <div class="card-label guide">Chaufförsguide</div>
+        <div class="card-title">Linjenät &amp; Lathund</div>
+        <div class="card-desc">Interaktiv karta, alla hållplatser, aktuella driftstörningar, billettregler och praktiska chaufförstips för linjerna 1–7.</div>
+        <div class="card-cta guide">Öppna guiden →</div>
+      </a>
+
+      <!-- Study -->
+      <a class="main-card study" href="orebro_studera.html" target="_blank">
+        <div class="card-icon study">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#27ae60" stroke-width="1.5" width="24" height="24">
+            <circle cx="12" cy="12" r="10"/>
+            <polygon points="10,8 16,12 10,16" fill="#27ae60" stroke="none"/>
+          </svg>
+        </div>
+        <div class="card-label study">Rutt­inlärning</div>
+        <div class="card-title">Studera Rutten</div>
+        <div class="card-desc">Gå igenom varje hållplats med satellitkarta, dörrinformation, estimerad körtid och körläge för alla 7 linjer.</div>
+        <div class="card-cta study">Starta studium →</div>
+      </a>
+
+      <!-- Quiz -->
+      <a class="main-card quiz" href="orebro_buss_quiz.html?standalone" target="_blank">
+        <div class="card-icon quiz">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#9b59b6" stroke-width="1.5" width="24" height="24">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+            <line x1="12" y1="17" x2="12.01" y2="17" stroke-linecap="round" stroke-width="2"/>
+          </svg>
+        </div>
+        <div class="card-label quiz">Kunskapstest</div>
+        <div class="card-title">Buss­quiz Örebro</div>
+        <div class="card-desc">49 frågor inom 7 kapitel — hållplatser, Citylinjen BRT, biljetter, regler, störningshantering och mer.</div>
+        <div class="card-cta quiz">Starta quiz →</div>
+      </a>
+
+    </div>
+
+    <!-- Quick line links -->
+    <div class="quick-section">
+      <div class="section-lbl">Studera en specifik linje direkt</div>
+      <div class="lines-grid">
+        <a class="line-tile" style="background:rgba(231,76,60,.15);border-color:rgba(231,76,60,.3)" href="orebro_studera.html?line=1" target="_blank">
+          <div class="line-tile-num">1</div>
+          <div class="line-tile-name">Vivalla–Brickebacken</div>
+        </a>
+        <a class="line-tile" style="background:rgba(39,174,96,.15);border-color:rgba(39,174,96,.3)" href="orebro_studera.html?line=2" target="_blank">
+          <div class="line-tile-num">2</div>
+          <div class="line-tile-name">Mellringe–Universitetet</div>
+        </a>
+        <a class="line-tile" style="background:rgba(41,128,185,.15);border-color:rgba(41,128,185,.3)" href="orebro_studera.html?line=3" target="_blank">
+          <div class="line-tile-num">3</div>
+          <div class="line-tile-name">Lundby–Solhaga</div>
+        </a>
+        <a class="line-tile" style="background:rgba(230,126,34,.15);border-color:rgba(230,126,34,.3)" href="orebro_studera.html?line=4" target="_blank">
+          <div class="line-tile-num">4</div>
+          <div class="line-tile-name">Rynningeåsen–Marieberg</div>
+        </a>
+        <a class="line-tile" style="background:rgba(142,68,173,.15);border-color:rgba(142,68,173,.3)" href="orebro_studera.html?line=5" target="_blank">
+          <div class="line-tile-num">5</div>
+          <div class="line-tile-name">Hovsta–Tybble</div>
+        </a>
+        <a class="line-tile" style="background:rgba(22,160,133,.15);border-color:rgba(22,160,133,.3)" href="orebro_studera.html?line=6" target="_blank">
+          <div class="line-tile-num">6</div>
+          <div class="line-tile-name">Björkhaga–Universitetet</div>
+        </a>
+        <a class="line-tile" style="background:rgba(211,84,0,.15);border-color:rgba(211,84,0,.3)" href="orebro_studera.html?line=7" target="_blank">
+          <div class="line-tile-num">7</div>
+          <div class="line-tile-name">Lillån–Mosås</div>
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    Svealandstrafiken · Länstrafiken Örebro · Data: Samtrafiken / Trafiklab GTFS Regional ·
+    <a href="orebro_stadsbuss.html?standalone" target="_blank">Fullständig chaufförsguide</a>
+  </footer>
+
+  <script>
+  // NOTE: This is a standalone page (no LogBook chrome). The LB sidebar links to this page.
+  // Check for active alerts (non-blocking)
+  fetch('http://100.79.170.93:8010/orebro-alerts')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d.ok && d.alerts && d.alerts.length)
+        document.getElementById('alert-strip').classList.add('visible');
+    }).catch(function(){});
+  </script>
+
+</body>
+</html>

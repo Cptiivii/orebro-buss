@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Studera rutten — Örebro Stadsbussar</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700;800&family=Share+Tech+Mono&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #040d1a;
+      --panel:  #071428;
+      --border: #0d2d50;
+      --cyan:   #00d4ff;
+      --text:   #d8eeff;
+      --muted:  #7ab0c8;
+      --l1:#e74c3c; --l2:#27ae60; --l3:#2980b9;
+      --l4:#e67e22; --l5:#8e44ad; --l6:#16a085; --l7:#d35400;
+    }
+
+    html, body {
+      height: 100%; background: var(--bg); color: var(--text);
+      font-family: 'Exo 2', sans-serif; overflow: hidden;
+    }
+
+    /* ── Layout ── */
+    #app {
+      display: flex; flex-direction: column; height: 100vh; max-height: 100dvh;
+    }
+
+    /* ── Header bar ── */
+    #hdr {
+      display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+      background: rgba(4,12,26,0.98); border-bottom: 1px solid var(--border);
+      flex-shrink: 0; flex-wrap: wrap; min-height: 56px;
+    }
+    #back-btn {
+      background: none; border: 1px solid var(--border); color: var(--muted);
+      border-radius: 5px; padding: 5px 12px; cursor: pointer; font-size: 13px;
+      font-family: 'Exo 2', sans-serif; white-space: nowrap; flex-shrink: 0;
+    }
+    #back-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+    #line-selector {
+      display: flex; gap: 5px; flex-wrap: wrap; flex-shrink: 0;
+    }
+    .ls-btn {
+      width: 34px; height: 34px; border-radius: 50%; border: 2px solid transparent;
+      font-size: 14px; font-weight: 800; color: #fff; cursor: pointer;
+      transition: all .15s; display: flex; align-items: center; justify-content: center;
+    }
+    .ls-btn.active { border-color: #fff; box-shadow: 0 0 12px rgba(255,255,255,.4); transform: scale(1.1); }
+    .ls-btn:hover:not(.active) { transform: scale(1.05); opacity: .85; }
+    .dir-btns-hdr { display: flex; gap: 5px; margin-left: 4px; flex-shrink: 0; }
+    .dir-btn-hdr {
+      padding: 5px 10px; border-radius: 5px; border: 1px solid rgba(255,255,255,.18);
+      background: none; color: var(--muted); cursor: pointer; font-size: 11px;
+      font-weight: 700; font-family: 'Exo 2', sans-serif; letter-spacing: .05em;
+      transition: all .15s;
+    }
+    .dir-btn-hdr.active { border-color: var(--cyan); color: var(--cyan); background: rgba(0,212,255,.1); }
+    #hdr-counter {
+      margin-left: auto; font-size: 12px; color: var(--cyan); font-weight: 700; flex-shrink: 0;
+    }
+    #hdr-line-name {
+      font-size: 13px; font-weight: 700; color: var(--text); flex: 1; min-width: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* ── Satellite + info panel ── */
+    #study-top {
+      display: flex; height: 200px; flex-shrink: 0; border-bottom: 2px solid var(--border);
+    }
+    #study-sat-wrap { flex: 1.65; position: relative; overflow: hidden; background: #06101e; min-width: 0; }
+    #study-sat-img  { width: 100%; height: 100%; object-fit: cover; display: block; transition: opacity .25s; }
+    #study-sat-fade { position: absolute; inset: 0; background: linear-gradient(to right, transparent 70%, rgba(6,16,30,.7)); pointer-events: none; }
+    #study-sat-sv-link {
+      position: absolute; bottom: 8px; right: 10px; font-size: 10px; color: rgba(255,255,255,.65);
+      text-decoration: none; background: rgba(0,0,0,.55); padding: 3px 8px; border-radius: 3px;
+      border: 1px solid rgba(255,255,255,.18); z-index: 2; transition: all .15s;
+    }
+    #study-sat-sv-link:hover { color: #fff; background: rgba(0,0,0,.82); }
+    #study-info-panel {
+      flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px;
+      overflow-y: auto; min-width: 0; background: rgba(2,8,18,0.65); border-left: 1px solid var(--border);
+    }
+    #sip-name   { font-size: 17px; font-weight: 800; color: #fff; line-height: 1.15; }
+    #sip-badges { display: flex; gap: 5px; flex-wrap: wrap; min-height: 18px; }
+    .sip-badge  { font-size: 9px; font-weight: 800; letter-spacing: .07em; padding: 2px 6px; border-radius: 3px; }
+    .sip-badge.tp    { background: rgba(255,183,0,.18); color: #ffb700; border: 1px solid rgba(255,183,0,.4); }
+    .sip-badge.alert { background: rgba(231,76,60,.18); color: #ff5555; border: 1px solid rgba(231,76,60,.4); }
+    .sip-badge.brt   { background: rgba(0,212,255,.12); color: var(--cyan); border: 1px solid rgba(0,212,255,.3); }
+    #sip-peak   { font-size: 11px; padding: 4px 8px; border-radius: 4px; font-weight: 600; display: none; }
+    #sip-peak.rush  { background: rgba(231,76,60,.16); border: 1px solid rgba(231,76,60,.4); color: #ff6655; display: block; }
+    #sip-peak.busy  { background: rgba(255,167,0,.12); border: 1px solid rgba(255,167,0,.3); color: #ffa700; display: block; }
+    #sip-timing { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+    .sip-tbox   { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 5px; padding: 5px 8px; }
+    .sip-tdir   { font-size: 9px; font-weight: 700; letter-spacing: .09em; color: var(--muted); margin-bottom: 1px; }
+    .sip-tstop  { font-size: 11px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sip-tmin   { font-size: 10px; color: var(--cyan); margin-top: 1px; }
+    #sip-cumtime{ font-size: 10px; color: rgba(0,212,255,.55); margin-top: 1px; }
+    #sip-door   { font-size: 11px; padding: 4px 8px; border-radius: 4px; font-weight: 600; }
+    #sip-door.alla  { background: rgba(0,212,255,.08); border: 1px solid rgba(0,212,255,.25); color: rgba(0,212,255,.9); }
+    #sip-door.fram  { background: rgba(255,183,0,.06); border: 1px solid rgba(255,183,0,.2); color: rgba(255,220,120,.85); }
+    #sip-door.regler{ background: rgba(255,183,0,.14); border: 1px solid rgba(255,183,0,.45); color: #ffb700; }
+    #sip-notes  { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+    /* ── Nav bar ── */
+    #nav-bar {
+      display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+      border-bottom: 1px solid var(--border); flex-shrink: 0; background: rgba(0,0,0,.28);
+    }
+    .nav-btn {
+      background: rgba(0,212,255,.08); border: 1px solid rgba(0,212,255,.25); color: var(--cyan);
+      border-radius: 5px; padding: 7px 16px; font-size: 13px; font-weight: 700; cursor: pointer;
+      font-family: 'Exo 2', sans-serif; white-space: nowrap; flex-shrink: 0;
+      transition: background .12s;
+    }
+    .nav-btn:hover:not(:disabled) { background: rgba(0,212,255,.2); }
+    .nav-btn:disabled { opacity: .25; cursor: default; }
+    #nav-stops { display: flex; align-items: center; flex: 1; min-width: 0; overflow: hidden; gap: 0; }
+    #snav-prev { font-size: 11px; color: var(--muted); flex: 1; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 8px; cursor: pointer; transition: color .12s; }
+    #snav-prev:hover { color: var(--cyan); }
+    #snav-cur  { font-size: 12px; font-weight: 800; color: #fff; white-space: nowrap; padding: 3px 10px; background: rgba(255,255,255,.07); border-radius: 4px; border: 1px solid rgba(255,255,255,.14); max-width: 45%; overflow: hidden; text-overflow: ellipsis; }
+    #snav-next { font-size: 11px; color: var(--muted); flex: 1; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 8px; cursor: pointer; transition: color .12s; }
+    #snav-next:hover { color: var(--cyan); }
+    #nav-progress-wrap { width: 70px; flex-shrink: 0; height: 4px; background: rgba(255,255,255,.1); border-radius: 2px; overflow: hidden; }
+    #nav-progress-fill { height: 100%; background: var(--cyan); transition: width .25s; }
+    #nav-stop-num { font-size: 11px; color: var(--muted); min-width: 42px; text-align: center; flex-shrink: 0; }
+
+    /* ── Map ── */
+    #study-map-wrap { flex: 1; position: relative; min-height: 0; }
+    #study-map { position: absolute; inset: 0; }
+
+    /* ── Swipe hint (mobile) ── */
+    #swipe-hint {
+      position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,.7); color: rgba(255,255,255,.5); font-size: 11px;
+      padding: 5px 12px; border-radius: 12px; pointer-events: none; z-index: 500;
+      transition: opacity .5s; white-space: nowrap;
+    }
+
+    /* ── Stop list overlay (swipe-up) ── */
+    #stop-list-panel {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 800;
+      background: rgba(4,12,26,0.97); border-top: 1px solid var(--border);
+      transform: translateY(100%); transition: transform .3s ease;
+      max-height: 70vh; display: flex; flex-direction: column;
+    }
+    #stop-list-panel.open { transform: translateY(0); }
+    #stop-list-hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    #stop-list-title { font-size: 13px; font-weight: 700; color: var(--cyan); }
+    #stop-list-close {
+      background: none; border: 1px solid var(--border); color: var(--muted);
+      border-radius: 4px; padding: 3px 10px; cursor: pointer; font-size: 12px;
+      font-family: 'Exo 2', sans-serif;
+    }
+    #stop-list-body { overflow-y: auto; flex: 1; }
+    .sl-stop {
+      display: flex; align-items: center; gap: 10px; padding: 9px 16px;
+      border-bottom: 1px solid rgba(13,45,80,.5); cursor: pointer; font-size: 13px;
+      transition: background .1s;
+    }
+    .sl-stop:hover, .sl-stop.current { background: rgba(0,212,255,.08); }
+    .sl-stop-num {
+      min-width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,.1);
+      display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;
+      flex-shrink: 0; color: var(--muted);
+    }
+    .sl-stop-num.tp { background: rgba(255,183,0,.2); color: #ffb700; }
+    .sl-stop-name { color: var(--text); }
+    .sl-stop-badge { font-size: 9px; color: var(--cyan); margin-left: auto; flex-shrink: 0; }
+
+    /* ── Stops list button ── */
+    #stops-list-btn {
+      position: absolute; bottom: 16px; right: 16px; z-index: 500;
+      background: rgba(4,12,26,0.9); border: 1px solid rgba(0,212,255,.35);
+      color: var(--cyan); border-radius: 6px; padding: 7px 14px; cursor: pointer;
+      font-size: 12px; font-weight: 700; font-family: 'Exo 2', sans-serif;
+      backdrop-filter: blur(4px);
+    }
+
+    /* ── Mobile overrides ── */
+    @media(max-width:600px){
+      #study-top { flex-direction: column; height: auto; }
+      #study-sat-wrap { height: 130px; flex: none; }
+      #study-info-panel { max-height: 175px; }
+      #sip-name { font-size: 15px; }
+      #hdr { gap: 6px; padding: 8px 10px; }
+      #hdr-line-name { width: 100%; order: 10; font-size: 11px; }
+      .dir-btns-hdr { margin-left: 0; }
+      .ls-btn { width: 28px; height: 28px; font-size: 11px; }
+      #hdr-counter { font-size: 11px; }
+      #nav-bar { padding: 6px 10px; gap: 6px; }
+      .nav-btn { padding: 6px 10px; font-size: 12px; }
+      #nav-stop-num { min-width: 30px; font-size: 10px; }
+      #stops-list-btn { bottom: 12px; right: 10px; font-size: 11px; padding: 6px 10px; }
+    }
+    @media(max-width:380px){
+      .ls-btn { width: 24px; height: 24px; font-size: 10px; }
+      #study-sat-wrap { height: 110px; }
+      #sip-timing { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <!-- Header -->
+  <div id="hdr">
+    <button id="back-btn" onclick="goBack()">← Tillbaka</button>
+    <div id="line-selector">
+      <button class="ls-btn" style="background:var(--l1)" data-line="1" onclick="selectLine(1)">1</button>
+      <button class="ls-btn" style="background:var(--l2)" data-line="2" onclick="selectLine(2)">2</button>
+      <button class="ls-btn" style="background:var(--l3)" data-line="3" onclick="selectLine(3)">3</button>
+      <button class="ls-btn" style="background:var(--l4)" data-line="4" onclick="selectLine(4)">4</button>
+      <button class="ls-btn" style="background:var(--l5)" data-line="5" onclick="selectLine(5)">5</button>
+      <button class="ls-btn" style="background:var(--l6)" data-line="6" onclick="selectLine(6)">6</button>
+      <button class="ls-btn" style="background:var(--l7)" data-line="7" onclick="selectLine(7)">7</button>
+    </div>
+    <div class="dir-btns-hdr">
+      <button class="dir-btn-hdr active" id="dir-btn-0" data-dir="0" onclick="switchDir('0')">→ A</button>
+      <button class="dir-btn-hdr" id="dir-btn-1" data-dir="1" onclick="switchDir('1')">← B</button>
+    </div>
+    <div id="hdr-line-name"></div>
+    <div id="hdr-counter"></div>
+  </div>
+
+  <!-- Satellite + info panel -->
+  <div id="study-top">
+    <div id="study-sat-wrap">
+      <img id="study-sat-img" src="" alt="">
+      <div id="study-sat-fade"></div>
+      <a id="study-sat-sv-link" href="#" target="_blank" rel="noopener">Street View ↗</a>
+    </div>
+    <div id="study-info-panel">
+      <div id="sip-name"></div>
+      <div id="sip-badges"></div>
+      <div id="sip-peak"></div>
+      <div id="sip-timing"></div>
+      <div id="sip-door"></div>
+      <div id="sip-notes"></div>
+    </div>
+  </div>
+
+  <!-- Nav bar -->
+  <div id="nav-bar">
+    <button class="nav-btn" id="nav-prev" onclick="navStep(-1)">◀</button>
+    <div id="nav-stops">
+      <span id="snav-prev" onclick="navStep(-1)" title="Föregående hållplats"></span>
+      <span id="snav-cur"></span>
+      <span id="snav-next" onclick="navStep(1)" title="Nästa hållplats"></span>
+    </div>
+    <div id="nav-progress-wrap"><div id="nav-progress-fill"></div></div>
+    <span id="nav-stop-num"></span>
+    <button class="nav-btn" id="nav-next" onclick="navStep(1)">▶</button>
+  </div>
+
+  <!-- Map -->
+  <div id="study-map-wrap">
+    <div id="study-map"></div>
+    <div id="swipe-hint">← svep eller tryck på pilarna →</div>
+    <button id="stops-list-btn" onclick="openStopList()">☰ Alla hållplatser</button>
+  </div>
+</div>
+
+<!-- Stop list panel -->
+<div id="stop-list-panel">
+  <div id="stop-list-hdr">
+    <div id="stop-list-title">Hållplatser</div>
+    <button id="stop-list-close" onclick="closeStopList()">Stäng</button>
+  </div>
+  <div id="stop-list-body"></div>
+</div>
+
+<script src="orebro_shapes.js"></script>
+<script>
+var MB_TOKEN = 'pk.eyJ1IjoiaWl2aWkiLCJhIjoiY211a'+'XFsOG52MDZ2cjJ3c2Y2cXB6czM5ZyJ9.0GvSIuE5Q2wvXhW4gAt5-Q';
+var LINE_COLORS = {1:'#e74c3c',2:'#27ae60',3:'#2980b9',4:'#e67e22',5:'#8e44ad',6:'#16a085',7:'#d35400'};
+var LINE_DOOR_POLICY = {1:'alla',2:'alla'};
+
+// ── GTFS-RT alerts ─────────────────────────────────────────────────────────────
+var ALERT_STOPS = {};
+fetch('http://100.79.170.93:8010/orebro-alerts')
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if (!d.ok) return;
+    d.alerts.forEach(function(a){ a.stops.forEach(function(sid){ ALERT_STOPS[sid]=a.header; }); });
+  }).catch(function(){});
+
+// ── Panel notes per line/direction ────────────────────────────────────────────
+var PANEL_NOTES = {
+  1:{
+    '0':{viktiga:[{n:'Örebro Resecentrum',t:'Stor bytespunkt — tåg, buss, taxi'},{n:'Tybble centrum',t:'Tät bebyggelse, hög stigning morgon/kväll'},{n:'Universitetsplatsen',t:'Örebro Universitet — studenter'},{n:'Vivalla centrum',t:'Ändhållplats, hög belastning rusningstid'}],tips:['Alla dörrar öppnas — kunden validerar vid plattformen','Håll turtätheten — 10 min är minimigranskning','Rusningstid 07–09 och 15–18: extra belastning vid Vivalla och Brickebacken','Tegnérlunden stängd — kör via Tegnérgatan']},
+    '1':{viktiga:[{n:'Brickebacken centrum',t:'Ändhållplats — tillräcklig tid för vändning'},{n:'Tallrisvägen',t:'Sista hållplats, kontrollera resenärer'},{n:'Vivalla centrum',t:'Ändhållplats, stor passagerarmängd'}],tips:['Returresan kör samma sträcka omvänt','Kontrollera att alla resenärer gått av på ändhållplatsen','Rapportera förseningar via förarportalen']}
+  },
+  2:{
+    '0':{viktiga:[{n:'Mellringestaden',t:'Nytt bostadsområde, växande passagerarunderlag'},{n:'Varberga torg',t:'Lokalt centrum, hög stigning'},{n:'Markbackens centrum',t:'Servicepunkt västerut'},{n:'Universitetsplatsen',t:'Örebro Universitet — studenter'}],tips:['Delar BRT-körfält med linje 1 i centrum','Tegnérlunden: samma omledning som linje 1','Mellringe: vändmöjlighet vid terminalen','Studenttrafik hög belastning 08–09 och 16–18']},
+    '1':{viktiga:[{n:'Universitetsplatsen',t:'Ändhållplats — kontrollera avgångstid'},{n:'Mellringestaden',t:'Ändhållplats, nytt bostadsområde'}],tips:['Returnresan via samma BRT-korridor','Kontrollera plattformssignaler i centrum']}
+  },
+  3:{
+    '0':{viktiga:[{n:'Örebro Resecentrum',t:'Stor bytespunkt'},{n:'Vivalla centrum',t:'Hög befolkningstäthet'},{n:'Lundby centrum',t:'Norra Örebro, ändhållplats'}],tips:['Diagonalrutt — tänk korslinjen','Baronbackarna tillfälligt ~100 m norrut','Variera körtekniken vid Rosta-backen']},
+    '1':{viktiga:[{n:'Solhaga',t:'Ändhållplats söderut'},{n:'Rosta centrum',t:'Bostadsområde med hög stigning'}],tips:['Returresa nord→syd','Kontrollera hållplatsläge Baronbackarna']}
+  },
+  4:{
+    '0':{viktiga:[{n:'Rynningeåsen',t:'Ändhållplats, friluftsområde'},{n:'USÖ sjukhus (M-huset)',t:'Sjukhus — hög belastning alla tider'},{n:'Marieberg',t:'Köpcentrum — hög belastning helger'}],tips:['Sjukhustrafik: patienter och personal hela dygnet','Marieberg helger: extra trängt','Rynningeåsen: smal väg, kör försiktigt']},
+    '1':{viktiga:[{n:'Marieberg',t:'Ändhållplats, köpcentrum'},{n:'USÖ sjukhus',t:'Sjukhus — akutingång nära'}],tips:['Returnresan via USÖ och centrum','Var extra uppmärksam vid sjukhusingångarna']}
+  },
+  5:{
+    '0':{viktiga:[{n:'Hovsta',t:'Ändhållplats, industriområde'},{n:'Lillåns Center',t:'Lokalcentrum norr om centrum'},{n:'Svampen',t:'Landmärke, turisthållplats'},{n:'Tybble centrum',t:'Stort bostadsområde'}],tips:['Längsta linjen — håll tidtabellen vid vändpunkterna','Hovsta: industriarbetare högtrafik 06–07','Svampen: turisttrafik sommar']},
+    '1':{viktiga:[{n:'Tybble centrum',t:'Ändhållplats'},{n:'Hovsta',t:'Industriområde, tidig högtrafik'}],tips:['Returnresan via samma sträcka','Lillåns: parkering gör på- och avstigning smalare']}
+  },
+  6:{
+    '0':{viktiga:[{n:'Björkhaga',t:'Ändhållplats sydväst'},{n:'USÖ akuten',t:'Akutintag — alltid trafik'},{n:'Haga centrum',t:'Stadsdelens centrum'},{n:'Universitetet',t:'Örebro Universitet'}],tips:['Passerar akutintag — hög prioritet för snabb påstigning','Haga: gångfartszon, kör sakta','Universitetet: studenttrafik rusningstid']},
+    '1':{viktiga:[{n:'Universitetet',t:'Ändhållplats'},{n:'USÖ akuten',t:'Kritisk hållplats, alltid belastning'}],tips:['Returnresa via Haga och akuten','Var beredd på ambulanser vid USÖ-passagen']}
+  },
+  7:{
+    '0':{viktiga:[{n:'Lillån',t:'Ändhållplats norr'},{n:'Pettersberg',t:'Bostadsområde, hög stigning morgon'},{n:'Adolfsberg',t:'Villaområde, äldre resenärer'},{n:'Mosås',t:'Ändhållplats sydöst'}],tips:['Längst linjen — 42 hållplatser, håll tid','Adolfsberg: äldre resenärer, ge extra tid vid påstigning','Mosås: glesbygd, kontrollera tider']},
+    '1':{viktiga:[{n:'Mosås',t:'Ändhållplats'},{n:'Pettersberg',t:'Tät bebyggelse'}],tips:['Returnresan 42 hållplatser kräver tidsdisciplin','Pettersberg: hög stigning kväll']}
+  }
+};
+
+// ── Peak hours ─────────────────────────────────────────────────────────────────
+var STOP_PEAKS = {
+  'Resecentrum':       {rush:[[7,0,9,0],[15,0,18,0]]},
+  'Vivalla':           {rush:[[7,0,9,0],[15,0,18,0]]},
+  'Brickebacken':      {rush:[[7,0,9,0],[15,0,18,0]]},
+  'Mellringe':         {rush:[[7,0,9,0],[15,0,18,0]]},
+  'Universitetsplatsen':{rush:[[8,0,9,30],[15,30,17,30]]},
+  'Tybble':            {rush:[[7,30,9,0],[15,0,17,30]]},
+  'Markbacken':        {rush:[[7,0,9,0],[15,0,17,30]]},
+  'Hovsta':            {rush:[[6,30,8,0],[15,0,17,0]]},
+  'Mosås':             {rush:[[6,30,8,0],[15,0,17,0]]},
+  'Marieberg':         {busy:[[9,0,12,0],[13,0,15,0]]},
+  'Sjukhus':           {busy:[[7,0,9,0],[11,0,13,0],[15,0,18,0]]},
+  'USÖ':               {busy:[[7,0,9,0],[11,0,13,0],[15,0,18,0]]}
+};
+
+// ── State ──────────────────────────────────────────────────────────────────────
+var SS = { line:1, dir:'0', stops:[], idx:0, map:null, curM:null, routeL:null, dotMs:[] };
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function haversineDist(a, b) {
+  var R=6371, dLat=(b[0]-a[0])*Math.PI/180, dLon=(b[1]-a[1])*Math.PI/180;
+  var x=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(a[0]*Math.PI/180)*Math.cos(b[0]*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+function stopTravelMin(a, b, lineNum) {
+  if (!a||!b||!a.c||!b.c) return null;
+  var isBRT=!!(LINE_DOOR_POLICY&&LINE_DOOR_POLICY[lineNum]==='alla');
+  var kpm=isBRT?0.333:0.283;
+  return Math.max(1, Math.round(haversineDist(a.c,b.c)/kpm + (a.tp&&!isBRT?0.5:0)));
+}
+function computeCumTimes(stops, lineNum) {
+  var cum=[0];
+  for(var i=1;i<stops.length;i++) cum.push(cum[i-1]+(stopTravelMin(stops[i-1],stops[i],lineNum)||1));
+  return cum;
+}
+function checkStopPeak(name) {
+  var h=new Date().getHours(), m=new Date().getMinutes(), tot=h*60+m;
+  for(var key in STOP_PEAKS){
+    if(name.toLowerCase().indexOf(key.toLowerCase())!==-1){
+      var p=STOP_PEAKS[key];
+      if(p.rush&&p.rush.some(function(r){return tot>=r[0]*60+r[1]&&tot<=r[2]*60+r[3];}))
+        return {level:'rush',msg:'⚡ Rusningstrafik nu — hög belastning förväntas'};
+      if(p.busy&&p.busy.some(function(r){return tot>=r[0]*60+r[1]&&tot<=r[2]*60+r[3];}))
+        return {level:'busy',msg:'↑ Förhöjd trafik — var förberedd'};
+    }
+  }
+  return null;
+}
+
+// ── Map tile ───────────────────────────────────────────────────────────────────
+function getTileUrl(){
+  return 'https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}?access_token='+MB_TOKEN;
+}
+
+// ── Go to stop ─────────────────────────────────────────────────────────────────
+function goTo(idx) {
+  var stops=SS.stops;
+  if(idx<0||idx>=stops.length) return;
+  SS.idx=idx;
+  var s=stops[idx], prev=stops[idx-1], next=stops[idx+1];
+
+  // Map
+  if(SS.curM) SS.map.removeLayer(SS.curM);
+  SS.curM=L.circleMarker(s.c,{radius:12,fillColor:LINE_COLORS[SS.line],fillOpacity:1,color:'#fff',weight:3}).addTo(SS.map);
+  SS.map.setView(s.c,16,{animate:true,duration:.4});
+
+  // Progress + counter
+  document.getElementById('nav-prev').disabled=idx===0;
+  document.getElementById('nav-next').disabled=idx===stops.length-1;
+  document.getElementById('nav-progress-fill').style.width=Math.round(idx/(stops.length-1)*100)+'%';
+  document.getElementById('nav-stop-num').textContent=(idx+1)+'/'+stops.length;
+  document.getElementById('hdr-counter').textContent=(idx+1)+' / '+stops.length;
+
+  // Nav stop names
+  document.getElementById('snav-prev').textContent=prev?prev.n:'';
+  document.getElementById('snav-cur').textContent=s.n;
+  document.getElementById('snav-next').textContent=next?next.n:'';
+
+  // Satellite
+  var satImg=document.getElementById('study-sat-img');
+  satImg.style.opacity='0.4';
+  satImg.onload=function(){this.style.opacity='1';};
+  var satW=Math.min(Math.round(window.innerWidth*0.9),640), satH=Math.round(satW*0.28);
+  satImg.src='https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/'+s.c[1]+','+s.c[0]+',17,0/'+satW+'x'+satH+'?access_token='+MB_TOKEN;
+  document.getElementById('study-sat-sv-link').href='https://maps.google.com/?q='+s.c[0]+','+s.c[1]+'&layer=c&cbll='+s.c[0]+','+s.c[1];
+
+  // Info: name
+  document.getElementById('sip-name').textContent=s.n;
+
+  // Info: badges
+  var isBRT=!!(LINE_DOOR_POLICY&&LINE_DOOR_POLICY[SS.line]==='alla');
+  var hasAlert=!!ALERT_STOPS[s.id];
+  var badges='';
+  if(s.tp)    badges+='<span class="sip-badge tp">◆ REGLERHÅLLPLATS</span>';
+  if(hasAlert) badges+='<span class="sip-badge alert">⚠ TRAFIKSTÖRNING</span>';
+  if(isBRT)   badges+='<span class="sip-badge brt">≡ ALLA DÖRRAR</span>';
+  document.getElementById('sip-badges').innerHTML=badges;
+
+  // Info: peak
+  var pi=checkStopPeak(s.n);
+  var pe=document.getElementById('sip-peak');
+  pe.className=pi?pi.level:''; pe.textContent=pi?pi.msg:'';
+
+  // Info: timing
+  var tPrev=stopTravelMin(prev,s,SS.line), tNext=stopTravelMin(s,next,SS.line);
+  var cumMin=SS.cumTimes?SS.cumTimes[idx]:0;
+  var cumStr=cumMin>0?'<div id="sip-cumtime">+'+cumMin+' min från start</div>':'';
+  document.getElementById('sip-timing').innerHTML=
+    '<div class="sip-tbox"><div class="sip-tdir">◀ FÖREGÅENDE</div>'+
+    '<div class="sip-tstop">'+(prev?prev.n:'— Startpunkt —')+'</div>'+
+    (tPrev?'<div class="sip-tmin">~'+tPrev+' min sedan</div>':'')+
+    '</div>'+
+    '<div class="sip-tbox"><div class="sip-tdir">▶ NÄSTA</div>'+
+    '<div class="sip-tstop">'+(next?next.n:'— Ändhållplats —')+'</div>'+
+    (tNext?'<div class="sip-tmin">~'+tNext+' min dit</div>':'')+
+    cumStr+'</div>';
+
+  // Info: door
+  var doorEl=document.getElementById('sip-door');
+  if(isBRT){ doorEl.className='alla'; doorEl.textContent='≡ ALLA DÖRRAR — Kunden validerar vid plattformen, ej ombord'; }
+  else if(s.tp){ doorEl.className='regler'; doorEl.textContent='↑ FRAMDÖRREN · REGLERING — Stanna exakt, invänta om tidigt'; }
+  else { doorEl.className='fram'; doorEl.textContent='↑ FRAMDÖRREN — Kunden visar biljett vid påstigning'; }
+
+  // Info: notes
+  var pn=PANEL_NOTES[SS.line]&&PANEL_NOTES[SS.line][SS.dir];
+  var note='';
+  if(pn&&pn.viktiga){
+    pn.viktiga.forEach(function(v){
+      var vl=v.n.toLowerCase(),sl=s.n.toLowerCase();
+      if(sl.indexOf(vl.split(' ')[0])!==-1||vl.indexOf(sl.split(' ')[0])!==-1) note=v.t;
+    });
+  }
+  if(hasAlert&&ALERT_STOPS[s.id]) note=(note?note+' · ':'')+'⚠ '+ALERT_STOPS[s.id];
+  document.getElementById('sip-notes').textContent=note;
+}
+
+function navStep(d){ goTo(SS.idx+d); }
+
+// ── Open line ──────────────────────────────────────────────────────────────────
+function openLine(lineNum, dir, startIdx) {
+  dir=dir||'0'; startIdx=startIdx||0;
+  var sd=typeof STOP_DATA!=='undefined'&&STOP_DATA[lineNum];
+  var stops=sd&&(sd[dir]||sd['0']);
+  if(!stops||!stops.length){ alert('Hållplatsdata saknas.'); return; }
+  if(!sd[dir]) dir='0';
+  SS.line=lineNum; SS.dir=dir; SS.stops=stops;
+  SS.cumTimes=computeCumTimes(stops,lineNum);
+
+  // Update direction buttons
+  document.querySelectorAll('.dir-btn-hdr').forEach(function(b){
+    b.classList.toggle('active',b.dataset.dir===dir);
+    var avail=sd&&sd[b.dataset.dir]&&sd[b.dataset.dir].length>0;
+    b.disabled=!avail; b.style.opacity=avail?'':'0.3';
+  });
+
+  // Update line selector
+  document.querySelectorAll('.ls-btn').forEach(function(b){
+    b.classList.toggle('active',parseInt(b.dataset.line)===lineNum);
+  });
+
+  // Header line name
+  var color=LINE_COLORS[lineNum]||'#888';
+  var arrow=dir==='0'?'→':'←';
+  document.getElementById('hdr-line-name').innerHTML=
+    '<span style="display:inline-block;width:18px;height:18px;border-radius:50%;background:'+color+
+    ';text-align:center;line-height:18px;font-size:10px;font-weight:700;color:#fff;margin-right:6px;vertical-align:middle">'+lineNum+'</span>'+
+    arrow+' '+stops[0].n+' → '+stops[stops.length-1].n;
+
+  // Init or update map
+  setTimeout(function(){
+    if(!SS.map){
+      SS.map=L.map('study-map',{zoomControl:true}).setView(stops[0].c,15);
+      L.tileLayer(getTileUrl(),{attribution:'© Mapbox',maxZoom:18,tileSize:512,zoomOffset:-1}).addTo(SS.map);
+    } else { SS.map.invalidateSize(); }
+    setTimeout(function(){SS.map.invalidateSize();},50);
+    setTimeout(function(){SS.map.invalidateSize();SS.map.setView(SS.stops[0].c,15);},200);
+
+    // Route shape
+    if(SS.routeL) SS.map.removeLayer(SS.routeL);
+    var sh=typeof ROUTE_SHAPES!=='undefined'&&ROUTE_SHAPES[lineNum];
+    if(sh&&sh[dir]) SS.routeL=L.polyline(sh[dir],{color:color,weight:5,opacity:.9}).addTo(SS.map);
+
+    // Stop dot markers
+    SS.dotMs.forEach(function(m){SS.map.removeLayer(m);}); SS.dotMs=[];
+    stops.forEach(function(s,i){
+      var c2=s.tp?'#ffb700':ALERT_STOPS[s.id]?'#e74c3c':'rgba(255,255,255,0.35)';
+      var m=L.circleMarker(s.c,{radius:4,fillColor:c2,fillOpacity:1,color:'#fff',weight:1.5}).addTo(SS.map);
+      m.on('click',function(){goTo(i);});
+      SS.dotMs.push(m);
+    });
+
+    goTo(Math.min(startIdx,stops.length-1));
+  },120);
+}
+
+// ── Direction switch ───────────────────────────────────────────────────────────
+function switchDir(dir){
+  var sd=typeof STOP_DATA!=='undefined'&&STOP_DATA[SS.line];
+  if(!sd||!sd[dir]||!sd[dir].length) return;
+  openLine(SS.line,dir,0);
+}
+
+function selectLine(n){ openLine(n,'0',0); }
+
+// ── Stop list panel ────────────────────────────────────────────────────────────
+function openStopList(){
+  var body=document.getElementById('stop-list-body');
+  document.getElementById('stop-list-title').textContent='Linje '+SS.line+' — '+SS.stops.length+' hållplatser';
+  var html='';
+  SS.stops.forEach(function(s,i){
+    var isCurrent=i===SS.idx;
+    html+='<div class="sl-stop'+(isCurrent?' current':'')+'" onclick="goTo('+i+');closeStopList()">'+
+      '<div class="sl-stop-num'+(s.tp?' tp':'')+'">'+(i+1)+'</div>'+
+      '<span class="sl-stop-name">'+s.n+'</span>'+
+      (s.tp?'<span class="sl-stop-badge">◆ R</span>':'')+
+      '</div>';
+  });
+  body.innerHTML=html;
+  document.getElementById('stop-list-panel').classList.add('open');
+}
+
+function closeStopList(){
+  document.getElementById('stop-list-panel').classList.remove('open');
+}
+
+// ── Back button ────────────────────────────────────────────────────────────────
+function goBack(){
+  if(document.referrer&&document.referrer.indexOf('orebro_busslanding')!==-1) history.back();
+  else window.location.href='orebro_busslanding.html';
+}
+
+// ── Keyboard navigation ────────────────────────────────────────────────────────
+document.addEventListener('keydown',function(e){
+  if(e.key==='ArrowLeft'||e.key==='ArrowDown') navStep(-1);
+  if(e.key==='ArrowRight'||e.key==='ArrowUp') navStep(1);
+});
+
+// ── Touch swipe navigation ─────────────────────────────────────────────────────
+var _tx=0, _ty=0;
+document.getElementById('study-map-wrap').addEventListener('touchstart',function(e){
+  _tx=e.changedTouches[0].screenX; _ty=e.changedTouches[0].screenY;
+},{passive:true});
+document.getElementById('study-map-wrap').addEventListener('touchend',function(e){
+  var dx=e.changedTouches[0].screenX-_tx;
+  var dy=e.changedTouches[0].screenY-_ty;
+  if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5){ navStep(dx<0?1:-1); }
+},{passive:true});
+
+// ── Hide swipe hint after first use ───────────────────────────────────────────
+var _hintHidden=false;
+function hideHint(){
+  if(!_hintHidden){ _hintHidden=true; var h=document.getElementById('swipe-hint'); if(h) h.style.opacity='0'; }
+}
+document.getElementById('nav-prev').addEventListener('click',hideHint);
+document.getElementById('nav-next').addEventListener('click',hideHint);
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded',function(){
+  var params=new URLSearchParams(location.search);
+  var line=parseInt(params.get('line'))||1;
+  var dir=params.get('dir')||'0';
+  var stop=parseInt(params.get('stop'))||0;
+  openLine(line,dir,stop);
+});
+</script>
+</body>
+</html>

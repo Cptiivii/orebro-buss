@@ -104,7 +104,7 @@
     #study-counter { font-size:12px; color:var(--cyan); font-weight:700; flex-shrink:0; }
 
     /* ── Top section: satellite + info panel ── */
-    #study-top { display:flex; height:230px; flex-shrink:0; border-bottom:2px solid var(--border); overflow:hidden; }
+    #study-top { display:flex; height:310px; flex-shrink:0; border-bottom:2px solid var(--border); overflow:hidden; }
     #study-sat-wrap { flex:1.65; position:relative; overflow:hidden; background:#06101e; min-width:0; }
     #study-sat-img { width:100%; height:100%; object-fit:cover; display:block; transition:opacity .25s; }
     #study-sat-fade { position:absolute; inset:0; background:linear-gradient(to right,transparent 70%,rgba(6,16,30,.7)); pointer-events:none; }
@@ -178,14 +178,18 @@
 
     @media(max-width:700px){
       #study-top { flex-direction:column; height:auto; }
-      #study-sat-wrap { height:130px; flex:none; }
-      #study-info-panel { max-height:160px; }
+      #study-sat-wrap { height:220px; flex:none; }
+      #study-info-panel { max-height:190px; }
       #sip-timing { grid-template-columns:1fr; }
       #study-nav-stops { gap:6px; }
     }
+    @media(max-width:600px){
+      .leaflet-popup-content-wrapper { max-width:calc(100vw - 28px) !important; }
+      .leaflet-popup-content { margin:0 8px 8px !important; }
+    }
     @media(max-width:480px){
-      #study-sat-wrap { height:110px; }
-      #study-info-panel { max-height:140px; }
+      #study-sat-wrap { height:185px; }
+      #study-info-panel { max-height:160px; }
     }
     .lb-map-tooltip { background:rgba(5,15,30,0.92)!important; border:1px solid rgba(0,212,255,0.3)!important; color:#e8f4ff!important; font-size:12px!important; font-family:Inter,sans-serif!important; padding:3px 8px!important; border-radius:4px!important; }
     .lb-map-popup .leaflet-popup-content-wrapper { background:rgba(250,252,255,0.97); border-radius:6px; box-shadow:0 4px 16px rgba(0,0,0,0.18); padding:16px 0 0 0; }
@@ -408,6 +412,7 @@
       <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
         <a href="orebro_busslanding.html" style="font-size:11px;color:var(--cyan);text-decoration:none;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);padding:3px 10px;border-radius:4px" target="_blank">↗ Chaufförsportal (extern)</a>
         <a href="orebro_studera.html" style="font-size:11px;color:#27ae60;text-decoration:none;background:rgba(39,174,96,.08);border:1px solid rgba(39,174,96,.2);padding:3px 10px;border-radius:4px" target="_blank">▶ Studera rutten</a>
+        <button onclick="location.reload(true)" title="Tvinga omladdning från server (rensar cache)" style="font-size:11px;color:var(--muted);background:none;border:1px solid rgba(255,255,255,.12);padding:3px 10px;border-radius:4px;cursor:pointer">⟳ Uppdatera sidan</button>
       </div>
     </div>
   </div>
@@ -1731,13 +1736,13 @@ function makeMarker(latlng, color, name, isHub, lineNum, isTimingPoint) {
 
   // Mapbox satellite image of stop (bird's eye)
   var isMob = window.innerWidth < 600;
-  var imgW = isMob ? 280 : 400, imgH = isMob ? 150 : 220;
+  var imgW = isMob ? 220 : 400, imgH = isMob ? 120 : 220;
   var imgHtml = '<img src="https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/'
     +latlng[1]+','+latlng[0]+',17,0/'+imgW+'x'+imgH+'?access_token='+MB_TOKEN
     +'" style="width:100%;border-radius:6px;margin-bottom:8px;display:block" loading="lazy">';
 
-  var popW = isMob ? 'min(280px,calc(100vw - 32px))' : '340px';
-  var popup = '<div style="font-family:Inter,sans-serif;min-width:'+popW+';max-width:'+(isMob?'calc(100vw - 24px)':'440px')+'">'
+  var popW = isMob ? 'min(240px,calc(100vw - 32px))' : '340px';
+  var popup = '<div style="font-family:Inter,sans-serif;min-width:'+popW+';max-width:'+(isMob?'calc(100vw - 28px)':'440px')+'">'
     + imgHtml
     + '<div style="font-size:16px;font-weight:700;color:#111;margin-bottom:5px">'+cleanName+badge+'</div>'
     + linesBadges
@@ -1751,7 +1756,7 @@ function makeMarker(latlng, color, name, isHub, lineNum, isTimingPoint) {
     + '</div>';
   return L.marker(latlng, {icon:icon})
     .bindTooltip(cleanName + (isTimingPoint?' ◆ Reglerhållplats':''), {direction:'top', offset:[0,-6], className:'lb-map-tooltip'})
-    .bindPopup(popup, {maxWidth:460, className:'lb-map-popup'+(isTimingPoint?' lb-map-popup-tp':'')});
+    .bindPopup(popup, {maxWidth: isMob ? Math.min(280, window.innerWidth-28) : 460, className:'lb-map-popup'+(isTimingPoint?' lb-map-popup-tp':'')});
 }
 
 function initMap(n) {
@@ -2529,6 +2534,13 @@ document.addEventListener('DOMContentLoaded', function(){
   for (var ln=1; ln<=7; ln++) {
     var hdr = document.querySelector('#panel-'+ln+' .route-hdr');
     if (!hdr) continue;
+    // Home button — back to overview
+    var homeBtn = document.createElement('button');
+    homeBtn.title='Tillbaka till översikt';
+    homeBtn.style.cssText='font-size:12px;background:none;border:1px solid rgba(0,212,255,.25);color:var(--cyan);padding:3px 9px;border-radius:4px;cursor:pointer;white-space:nowrap;flex-shrink:0';
+    homeBtn.innerHTML='&#8962; Översikt';
+    homeBtn.onclick=function(){ showTab(0); };
+    hdr.insertBefore(homeBtn, hdr.firstChild);
     // Direction toggle row above stops-grid
     var sg = document.querySelector('#panel-'+ln+' .stops-grid');
     if (sg) {

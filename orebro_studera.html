@@ -79,8 +79,9 @@
     #study-sat-fade { position: absolute; inset: 0; background: linear-gradient(to right, transparent 70%, rgba(6,16,30,.7)); pointer-events: none; }
     #study-sat-sv-link {
       position: absolute; bottom: 8px; right: 10px; font-size: 10px; color: rgba(255,255,255,.65);
-      text-decoration: none; background: rgba(0,0,0,.55); padding: 3px 8px; border-radius: 3px;
+      background: rgba(0,0,0,.55); padding: 3px 8px; border-radius: 3px;
       border: 1px solid rgba(255,255,255,.18); z-index: 2; transition: all .15s;
+      cursor: pointer; font-family: 'Exo 2', sans-serif;
     }
     #study-sat-sv-link:hover { color: #fff; background: rgba(0,0,0,.82); }
     #study-info-panel {
@@ -177,6 +178,26 @@
     .sl-stop-name { color: var(--text); }
     .sl-stop-badge { font-size: 9px; color: var(--cyan); margin-left: auto; flex-shrink: 0; }
 
+    /* ── Street View panel ── */
+    #sv-panel {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 900;
+      background: rgba(4,12,26,0.98); border-top: 1px solid var(--border);
+      transform: translateY(100%); transition: transform .3s ease;
+      height: 55vh; display: flex; flex-direction: column;
+    }
+    #sv-panel.open { transform: translateY(0); }
+    #sv-panel-hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    #sv-panel-title { font-size: 13px; font-weight: 700; color: var(--cyan); }
+    #sv-panel-close {
+      background: none; border: 1px solid var(--border); color: var(--muted);
+      border-radius: 4px; padding: 3px 10px; cursor: pointer; font-size: 12px;
+      font-family: 'Exo 2', sans-serif;
+    }
+    #sv-frame { flex: 1; border: none; width: 100%; display: block; }
+
     /* ── Stops list button ── */
     #stops-list-btn {
       position: absolute; bottom: 16px; right: 16px; z-index: 500;
@@ -236,7 +257,7 @@
     <div id="study-sat-wrap">
       <img id="study-sat-img" src="" alt="">
       <div id="study-sat-fade"></div>
-      <a id="study-sat-sv-link" href="#" target="_blank" rel="noopener">Street View ↗</a>
+      <button id="study-sat-sv-link" onclick="openStreetView()">Street View ▾</button>
     </div>
     <div id="study-info-panel">
       <div id="sip-name"></div>
@@ -267,6 +288,15 @@
     <div id="swipe-hint">← svep eller tryck på pilarna →</div>
     <button id="stops-list-btn" onclick="openStopList()">☰ Alla hållplatser</button>
   </div>
+</div>
+
+<!-- Street View panel -->
+<div id="sv-panel">
+  <div id="sv-panel-hdr">
+    <div id="sv-panel-title">Street View</div>
+    <button id="sv-panel-close" onclick="closeStreetView()">Stäng</button>
+  </div>
+  <iframe id="sv-frame" src="" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
 </div>
 
 <!-- Stop list panel -->
@@ -345,7 +375,7 @@ var STOP_PEAKS = {
 };
 
 // ── State ──────────────────────────────────────────────────────────────────────
-var SS = { line:1, dir:'0', stops:[], idx:0, map:null, curM:null, routeL:null, dotMs:[] };
+var SS = { line:1, dir:'0', stops:[], idx:0, map:null, mapTile:null, curM:null, routeL:null, dotMs:[], svLat:null, svLng:null, svName:'' };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function haversineDist(a, b) {
@@ -427,7 +457,7 @@ function goTo(idx) {
   satImg.onload=function(){this.style.opacity='1';};
   var satW=Math.min(Math.round(window.innerWidth*0.9),640), satH=Math.round(satW*0.28);
   satImg.src='https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/'+s.c[1]+','+s.c[0]+',17,0/'+satW+'x'+satH+'?access_token='+MB_TOKEN;
-  document.getElementById('study-sat-sv-link').href='https://maps.google.com/?q='+s.c[0]+','+s.c[1]+'&layer=c&cbll='+s.c[0]+','+s.c[1];
+  SS.svLat=s.c[0]; SS.svLng=s.c[1]; SS.svName=s.n;
 
   // Info: name
   document.getElementById('sip-name').textContent=s.n;
@@ -578,6 +608,21 @@ function openStopList(){
 
 function closeStopList(){
   document.getElementById('stop-list-panel').classList.remove('open');
+}
+
+// ── Street View panel ─────────────────────────────────────────────────────────
+function openStreetView(){
+  var lat=SS.svLat, lng=SS.svLng, name=SS.svName||'';
+  if(!lat||!lng) return;
+  document.getElementById('sv-panel-title').textContent='Street View — '+name;
+  document.getElementById('sv-frame').src=
+    'https://maps.google.com/maps?q='+lat+','+lng+'&layer=c&cbll='+lat+','+lng+'&ie=UTF8&output=embed&z=18';
+  document.getElementById('sv-panel').classList.add('open');
+}
+function closeStreetView(){
+  var panel=document.getElementById('sv-panel');
+  panel.classList.remove('open');
+  setTimeout(function(){ document.getElementById('sv-frame').src=''; },350);
 }
 
 // ── Back button ────────────────────────────────────────────────────────────────
